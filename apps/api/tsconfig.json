@@ -10,7 +10,7 @@
     "outDir": "dist",
     "noEmit": false
   },
-  "include": ["functions/**/*.ts", "vitest.config.ts"],
+  "include": ["functions/**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "../../packages/types" }

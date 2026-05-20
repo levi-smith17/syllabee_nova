@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import path from 'path'
 
 export default defineConfig({
     test: {
@@ -6,7 +7,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            '@syllabee/types': new URL('../../packages/types/index.ts', import.meta.url).pathname,
+            '@syllabee/types': path.resolve(__dirname, '../../packages/types/index.ts'),
         },
     },
 })

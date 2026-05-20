@@ -5,10 +5,10 @@ const mockSend = vi.hoisted(() => vi.fn())
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
     CognitoIdentityProviderClient: function () { return { send: mockSend } },
-    AdminUpdateUserAttributesCommand: function (input: any) { this.input = input },
-    AdminListGroupsForUserCommand: function (input: any) { this.input = input },
-    AdminAddUserToGroupCommand: function (input: any) { this.input = input },
-    AdminRemoveUserFromGroupCommand: function (input: any) { this.input = input },
+    AdminUpdateUserAttributesCommand: function () {},
+    AdminListGroupsForUserCommand: function () {},
+    AdminAddUserToGroupCommand: function () {},
+    AdminRemoveUserFromGroupCommand: function () {},
 }))
 
 const makeEvent = (id: string, body: object) => ({
