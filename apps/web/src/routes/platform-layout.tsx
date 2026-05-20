@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
 import EditorPage from '@/routes/editor/index'
 import InternshipPage from '@/routes/internship/index'
+import InternshipDetailPage from '@/routes/internship/detail'
 import AdminIndex from '@/routes/admin/index'
 import UsersPage from '@/routes/admin/users'
 import QuickLinksPage from '@/routes/admin/quick-links'
@@ -56,6 +57,7 @@ export default function PlatformLayout() {
                 <Routes location={backgroundLocation ?? location}>
                   <Route path="/editor" element={<EditorPage />} />
                   <Route path="/internship" element={<InternshipPage />} />
+                  <Route path="/internship/:id" element={<InternshipDetailPage />} />
                   <Route path="/admin" element={<AdminIndex />} />
                   <Route path="/admin/users" element={<UsersPage />} />
                   <Route path="/admin/quick-links" element={<QuickLinksPage />} />

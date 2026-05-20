@@ -4,6 +4,12 @@ import path from 'path'
 export default defineConfig({
     test: {
         environment: 'node',
+        exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            '**/cypress/**',
+            '**/.{idea,git,cache,output,temp}**'
+        ],
     },
     resolve: {
         alias: {

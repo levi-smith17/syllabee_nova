@@ -11,6 +11,7 @@ import ForgotPasswordPage from '@/routes/auth/forgot-password'
 import PlatformLayout from '@/routes/platform-layout'
 import EditorPage from '@/routes/editor/index'
 import InternshipPage from '@/routes/internship/index'
+import InternshipDetailPage from '@/routes/internship/detail'
 import AdminIndex from '@/routes/admin/index'
 import CoursesPage from '@/routes/registration/courses'
 import TermsPage from '@/routes/registration/terms'
@@ -42,6 +43,7 @@ export default function App() {
             <Route index element={<Navigate to="/editor" replace />} />
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/internship" element={<InternshipPage />} />
+            <Route path="/internship/:id" element={<InternshipDetailPage />} />
             <Route path="/admin" element={<AdminIndex />} />
             <Route path="/registration/courses" element={<CoursesPage />} />
             <Route path="/registration/terms" element={<TermsPage />} />

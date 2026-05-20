@@ -100,7 +100,7 @@ export function Sidebar({ isAdmin, quickLinks, restrictedQuickLinks }: SidebarPr
             {/* Quick links */}
             {((quickLinks && quickLinks.length > 0) || (restrictedQuickLinks && restrictedQuickLinks.length > 0)) && (
               <>
-                <Separator className="my-2" />
+                <Separator className="my-3" />
                 {collapsed ? (
                   <CollapsedQuickLinksGroup
                     quickLinks={quickLinks ?? []}
@@ -284,7 +284,7 @@ function CollapsedQuickLinksGroup({
         <div
           id="ql-popout"
           style={{ position: 'fixed', top: pos.top, left: pos.left }}
-          className="z-50 w-52 border bg-sidebar shadow-lg py-2"
+          className="z-50 w-52 border bg-sidebar shadow-lg py-2 px-2"
         >
           {quickLinks.length > 0 && (
             <>
@@ -298,7 +298,7 @@ function CollapsedQuickLinksGroup({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   <DynamicIcon name={ql.icon} className="h-4 w-4 shrink-0" />
                   <span className="truncate">{ql.label}</span>
@@ -319,7 +319,7 @@ function CollapsedQuickLinksGroup({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   <DynamicIcon name={ql.icon} className="h-4 w-4 shrink-0" />
                   <span className="truncate">{ql.label}</span>

@@ -130,12 +130,60 @@ export interface SectionProgress {
 }
 
 // ── Internship ────────────────────────────────────────────
+export type InternshipStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'WITHDRAWN'
+
 export interface Internship {
   pk: string
   sk: 'METADATA'
-  sectionId: string
+  id: string
   studentId: string
+  studentName: string
+  studentEmail: string
+  sectionId?: string
+  status: InternshipStatus
+  startDate?: string
+  endDate?: string
   completedHours: number
+  createdAt: string
+  createdBy: string
+}
+
+export interface InternshipLocation {
+  pk: string
+  sk: string
+  id: string
+  employerName: string
+  address?: string
+  city?: string
+  state?: string
+  zip?: string
+  supervisorName?: string
+  supervisorEmail?: string
+  supervisorPhone?: string
+  validated: boolean
+  createdAt: string
+}
+
+export interface InternshipJournalEntry {
+  pk: string
+  sk: string
+  id: string
+  locationId?: string
+  title: string
+  description: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  totalMinutes: number
+  verified: boolean
+  createdAt: string
+}
+
+export interface InternshipSettings {
+  pk: 'SETTINGS'
+  sk: 'INTERNSHIP'
+  requiredHours: number
+  journalPoints: number
 }
 
 // ── Branding ──────────────────────────────────────────────
