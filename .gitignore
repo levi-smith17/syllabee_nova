@@ -1,43 +1,40 @@
 # dependencies
-node_modules/
-
-# pnpm
+node_modules
 .pnp
 .pnp.*
 
-# builds / output
-dist/
-build/
-coverage/
+# build outputs
+dist
+build
+.next
+out
 
-# env — ignore local overrides, but keep .env.example committed
-.env*.local
-.env.local
+# turbo
+.turbo
 
-# macOS
+# testing
+coverage
+
+# env files
+.env*
+
+# misc
 .DS_Store
 *.pem
 
-# debug logs
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# TypeScript
+# typescript
 *.tsbuildinfo
 
-# IDE
+# editor
 .idea/
 .vscode/
 
-# Claude
-CLAUDE.md
-.claude/
-
-# Terraform — working directory and generated artifacts only
-# .terraform.lock.hcl should be committed (pins provider versions)
-**/.terraform/
-*.tfplan
-plan_output.txt
-placeholder-*.zip
+# scripts (local migration utilities, not tracked)
+/scripts/
+/.claude/
