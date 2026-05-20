@@ -32,6 +32,3 @@ variable "project" {
   default = "syllabee"
 }
 
-variable "web_url" {
-  type = string
-}

@@ -17,10 +17,6 @@ variable "aws_profile" {
   default = ""
 }
 
-variable "web_url" {
-  type = string
-}
-
 variable "allow_origins" {
   type    = list(string)
   default = ["*"]

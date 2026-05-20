@@ -88,12 +88,14 @@ resource "aws_iam_policy" "terraform_aws" {
     Statement = [{
       Effect = "Allow"
       Action = [
+        "cloudfront:*",
         "cognito-idp:*",
         "dynamodb:*",
         "lambda:*",
         "apigateway:*",
         "iam:*",
         "logs:*",
+        "s3:*",
       ]
       Resource = "*"
     }]
