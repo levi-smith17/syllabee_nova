@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api/client'
 import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
 import EditorPage from '@/routes/editor/index'
+import EditorDetailPage from '@/routes/editor/detail'
 import InternshipPage from '@/routes/internship/index'
 import InternshipDetailPage from '@/routes/internship/detail'
 import AdminIndex from '@/routes/admin/index'
@@ -56,6 +57,7 @@ export default function PlatformLayout() {
               <div className="absolute inset-0 z-0">
                 <Routes location={backgroundLocation ?? location}>
                   <Route path="/editor" element={<EditorPage />} />
+                  <Route path="/editor/:id" element={<EditorDetailPage />} />
                   <Route path="/internship" element={<InternshipPage />} />
                   <Route path="/internship/:id" element={<InternshipDetailPage />} />
                   <Route path="/admin" element={<AdminIndex />} />

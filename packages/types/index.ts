@@ -64,7 +64,6 @@ export type BlockType =
   | 'content_block'
   | 'details_block'
   | 'file_block'
-  | 'course_syllabus_block'
   | 'grade_determination_block'
   | 'list_block'
   | 'schedule_block'
@@ -102,7 +101,9 @@ export interface Segment {
 export interface MasterSyllabus {
   pk: string
   sk: 'METADATA'
-  termCode: string
+  id: string
+  title: string
+  termCode?: string
   officeHours?: string
   interactiveView: boolean
   timeout: number
@@ -114,6 +115,53 @@ export interface MasterSyllabus {
   pointsLadderDeduction: number
   locked: boolean
   ownerId: string
+  createdAt: string
+}
+
+export interface SyllabusSegment {
+  id: string
+  syllabusId: string
+  name: string
+  description?: string
+  printHeading: boolean
+  printingOptional: boolean
+  isVisible: boolean
+  sortOrder: number
+  effectiveTerm?: string
+}
+
+export interface SyllabusBlock {
+  id: string
+  syllabusId: string
+  segmentId: string
+  type: BlockType
+  name: string
+  isVisible: boolean
+  sortOrder: number
+  printHeading: boolean
+  content: Record<string, unknown>
+  published: boolean
+  permalink?: string
+}
+
+export interface SyllabusDetail {
+  syllabus: MasterSyllabus
+  segments: (SyllabusSegment & { blocks: SyllabusBlock[] })[]
+}
+
+export interface GradingScale {
+  id: string
+  name: string
+  ownerId: string
+  createdAt: string
+}
+
+export interface GradingScaleGrade {
+  id: string
+  scaleId: string
+  letter: string
+  minPercent: number
+  maxPercent: number
 }
 
 // ── Student Progress ──────────────────────────────────────

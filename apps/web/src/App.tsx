@@ -10,6 +10,7 @@ import ForgotPasswordPage from '@/routes/auth/forgot-password'
 // Platform
 import PlatformLayout from '@/routes/platform-layout'
 import EditorPage from '@/routes/editor/index'
+import EditorDetailPage from '@/routes/editor/detail'
 import InternshipPage from '@/routes/internship/index'
 import InternshipDetailPage from '@/routes/internship/detail'
 import AdminIndex from '@/routes/admin/index'
@@ -42,6 +43,7 @@ export default function App() {
           <Route element={<PlatformLayout />}>
             <Route index element={<Navigate to="/editor" replace />} />
             <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor/:id" element={<EditorDetailPage />} />
             <Route path="/internship" element={<InternshipPage />} />
             <Route path="/internship/:id" element={<InternshipDetailPage />} />
             <Route path="/admin" element={<AdminIndex />} />
