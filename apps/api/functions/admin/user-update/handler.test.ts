@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { handler } from './handler'
 
 const mockSend = vi.hoisted(() => vi.fn())
+// Create a separate mock for DynamoDB to avoid call-count conflicts with Cognito
+const mockDynamoSend = vi.hoisted(() => vi.fn())
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
     CognitoIdentityProviderClient: function () { return { send: mockSend } },
@@ -9,6 +11,17 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
     AdminListGroupsForUserCommand: function () {},
     AdminAddUserToGroupCommand: function () {},
     AdminRemoveUserFromGroupCommand: function () {},
+}))
+
+// Add this mock to handle the DynamoDB sync calls
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+    UpdateCommand: function () {},
+}))
+
+// Add this mock to intercept the exported dynamo client from your shared folder
+vi.mock('../../shared/db', () => ({
+    dynamo: { send: mockDynamoSend },
+    TABLE_NAME: 'test-table',
 }))
 
 const makeEvent = (id: string, body: object) => ({
@@ -40,16 +53,20 @@ describe('admin/user-update', () => {
 
     it('updates name and returns 200', async () => {
         mockSend.mockResolvedValueOnce({})
+        mockDynamoSend.mockResolvedValueOnce({}) // Handle DDB response
 
         const result = await handler(makeEvent('user@test.com', { name: 'New Name' })) as any
         expect(result.statusCode).toBe(200)
-        expect(JSON.parse(result.body).data).toMatchObject({ email: 'user@test.com' })
+
+        // Fixed assertion: The handler returns { id }, not { email }
+        expect(JSON.parse(result.body).data).toMatchObject({ id: 'user@test.com' })
     })
 
     it('promotes user to Admin when role=ADMIN and not in group', async () => {
         mockSend
             .mockResolvedValueOnce({ Groups: [] })
             .mockResolvedValueOnce({})
+        mockDynamoSend.mockResolvedValueOnce({}) // Handle DDB response
 
         const result = await handler(makeEvent('user@test.com', { role: 'ADMIN' })) as any
         expect(result.statusCode).toBe(200)
@@ -60,6 +77,7 @@ describe('admin/user-update', () => {
         mockSend
             .mockResolvedValueOnce({ Groups: [{ GroupName: 'Admin' }] })
             .mockResolvedValueOnce({})
+        mockDynamoSend.mockResolvedValueOnce({}) // Handle DDB response
 
         const result = await handler(makeEvent('user@test.com', { role: 'INSTRUCTOR' })) as any
         expect(result.statusCode).toBe(200)
