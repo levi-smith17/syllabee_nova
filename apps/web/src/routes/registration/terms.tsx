@@ -180,9 +180,6 @@ export default function TermsPage() {
     setEditForm({ name: term.name, code: term.code, startDate: toInputDate(term.startDate), endDate: toInputDate(term.endDate), termLengthId: '' })
   }
 
-  if (isLoading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
-  if (isError) return <div className="flex-1 flex items-center justify-center text-destructive text-sm">Failed to load terms</div>
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
@@ -281,7 +278,9 @@ export default function TermsPage() {
           </form>
         )}
 
-        {filtered.length === 0 ? (
+        {isLoading && <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading…</div>}
+
+        {!isLoading && (filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground italic py-6 text-center">No terms match the current filters.</p>
         ) : (
           <div className="border overflow-hidden">
@@ -351,7 +350,7 @@ export default function TermsPage() {
               )
             )}
           </div>
-        )}
+        ))}
       </div>
 
       {/* ── Pagination footer ─────────────────────────────────────── */}

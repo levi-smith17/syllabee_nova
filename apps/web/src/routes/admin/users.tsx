@@ -94,9 +94,6 @@ export default function UsersPage() {
     return user.status
   }
 
-  if (isLoading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
-  if (isError) return <div className="flex-1 flex items-center justify-center text-destructive text-sm">Failed to load users</div>
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
@@ -165,7 +162,9 @@ export default function UsersPage() {
           </form>
         )}
 
-        {filtered.length === 0 ? (
+        {isLoading && <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading…</div>}
+
+        {!isLoading && (filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground italic py-6 text-center">No users found.</p>
         ) : (
           <div className="divide-y border max-w-3xl">
@@ -194,7 +193,7 @@ export default function UsersPage() {
               )
             })}
           </div>
-        )}
+        ))}
       </div>
 
       <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>

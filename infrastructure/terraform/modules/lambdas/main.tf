@@ -1,6 +1,7 @@
 locals {
   all_lambdas = merge(
     local.lambdas_admin,
+    local.lambdas_profile,
     local.lambdas_quicklinks,
     local.lambdas_registration,
     local.lambdas_settings,

@@ -33,9 +33,9 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const REGISTRATION_ITEMS: NavItem[] = [
-  { label: 'Courses', href: '/admin/courses', icon: <GraduationCap className="h-5 w-5" /> },
-  { label: 'Terms', href: '/admin/terms', icon: <Calendar className="h-5 w-5" /> },
-  { label: 'Sections', href: '/admin/sections', icon: <Layers className="h-5 w-5" /> },
+  { label: 'Courses', href: '/registration/courses', icon: <GraduationCap className="h-5 w-5" /> },
+  { label: 'Sections', href: '/registration/sections', icon: <Layers className="h-5 w-5" /> },
+  { label: 'Terms', href: '/registration/terms', icon: <Calendar className="h-5 w-5" /> },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [

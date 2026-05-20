@@ -10,9 +10,9 @@ export interface User {
   id: string
   email: string
   name: string | null
-  role: 'ADMIN' | 'INSTRUCTOR'
-  status: string
-  createdAt: string
+  isAdmin?: boolean
+  status?: string
+  createdAt: string | null
 }
 
 // ── Term ──────────────────────────────────────────────────

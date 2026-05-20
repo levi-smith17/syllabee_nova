@@ -142,14 +142,16 @@ export default function QuickLinksPage() {
   const [addForm, setAddForm] = React.useState(EMPTY_FORM)
   const [adding, setAdding] = React.useState(false)
 
-  const { data: links = [], isLoading, isError } = useQuery<QuickLink[]>({
+  const { data: linksData, isLoading } = useQuery<QuickLink[]>({
     queryKey: ['admin-quick-links'],
     queryFn: () => apiFetch<{ data: QuickLink[] }>('/admin/quick-links').then(r => r.data ?? []),
     retry: 1,
   })
 
   const [localLinks, setLocalLinks] = React.useState<QuickLink[]>([])
-  React.useEffect(() => { setLocalLinks(links) }, [links])
+  React.useEffect(() => {
+    if (linksData !== undefined) setLocalLinks(linksData)
+  }, [linksData])
 
   const filtered = React.useMemo(() => {
     return localLinks.filter(l => {
@@ -198,9 +200,6 @@ export default function QuickLinksPage() {
   }
 
   const rowProps = { editingId, editForm, setEditForm, setLinks: setLocalLinks, onStartEdit: startEdit, onSaveEdit: handleSaveEdit, onCancelEdit: () => setEditingId(null), saving }
-
-  if (isLoading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
-  if (isError) return <div className="flex-1 flex items-center justify-center text-destructive text-sm">Failed to load quick links</div>
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -266,13 +265,15 @@ export default function QuickLinksPage() {
           </form>
         )}
 
-        {filtered.length === 0 ? (
+        {isLoading && <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading…</div>}
+
+        {!isLoading && (filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground italic py-6 text-center">No quick links match the current filters.</p>
         ) : (
           <div className="border overflow-hidden">
             {filtered.map(link => <LinkRow key={link.id} link={link} {...rowProps} />)}
           </div>
-        )}
+        ))}
       </div>
     </div>
   )

@@ -12,9 +12,9 @@ import PlatformLayout from '@/routes/platform-layout'
 import EditorPage from '@/routes/editor/index'
 import InternshipPage from '@/routes/internship/index'
 import AdminIndex from '@/routes/admin/index'
-import CoursesPage from '@/routes/admin/courses'
-import TermsPage from '@/routes/admin/terms'
-import SectionsPage from '@/routes/admin/sections'
+import CoursesPage from '@/routes/registration/courses'
+import TermsPage from '@/routes/registration/terms'
+import SectionsPage from '@/routes/registration/sections'
 import UsersPage from '@/routes/admin/users'
 import QuickLinksPage from '@/routes/admin/quick-links'
 import SettingsPage from '@/routes/admin/settings'
@@ -43,9 +43,9 @@ export default function App() {
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/internship" element={<InternshipPage />} />
             <Route path="/admin" element={<AdminIndex />} />
-            <Route path="/admin/courses" element={<CoursesPage />} />
-            <Route path="/admin/terms" element={<TermsPage />} />
-            <Route path="/admin/sections" element={<SectionsPage />} />
+            <Route path="/registration/courses" element={<CoursesPage />} />
+            <Route path="/registration/terms" element={<TermsPage />} />
+            <Route path="/registration/sections" element={<SectionsPage />} />
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/quick-links" element={<QuickLinksPage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />

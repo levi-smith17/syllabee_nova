@@ -96,6 +96,17 @@ jobs:
       aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
       aws_region: ${{ secrets.AWS_REGION }}
 
+  deploy-lambda-profile:
+    name: Deploy Lambda — Profile
+    needs: [build-lambda, terraform-apply]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: dev
+      functions: profile/get
+    secrets:
+      aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
+
   deploy-lambda-quicklinks:
     name: Deploy Lambda — Quick Links
     needs: [build-lambda, terraform-apply]

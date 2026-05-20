@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronDown, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
+import { useRelevantCourses } from '@/hooks/use-relevant-courses'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -96,11 +97,12 @@ function FilterDropdown({ label, options, selected, onToggle, onClear }: {
 }
 
 // ── Combobox ───────────────────────────────────────────────────────────────────
-function Combobox({ options, value, onChange, placeholder, className }: {
+function Combobox({ options, value, onChange, placeholder, emptyMessage = 'No results', className }: {
   options: { id: string; label: string }[]
   value: string
   onChange: (id: string) => void
   placeholder: string
+  emptyMessage?: string
   className?: string
 }) {
   const [query, setQuery] = React.useState('')
@@ -114,6 +116,7 @@ function Combobox({ options, value, onChange, placeholder, className }: {
   }, [open])
   const selected = options.find(o => o.id === value)
   const filtered = query ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase())) : options
+  const noItemsMessage = options.length === 0 ? emptyMessage : 'No results'
   return (
     <div ref={ref} className={cn('relative', className)}>
       <div className={cn('flex h-8 items-center border border-input bg-background px-2 gap-1.5', open && 'ring-1 ring-ring')}>
@@ -122,7 +125,7 @@ function Combobox({ options, value, onChange, placeholder, className }: {
           onChange={e => { setQuery(e.target.value); if (value) onChange('') }}
           onFocus={() => { setQuery(''); setOpen(true) }}
           placeholder={placeholder}
-          className="flex-1 text-sm bg-transparent outline-none min-w-0"
+          className="flex-1 text-sm bg-transparent outline-none min-w-0 placeholder:text-muted-foreground"
         />
         {value && (
           <button type="button" onClick={() => { onChange(''); setQuery('') }} className="text-muted-foreground hover:text-foreground shrink-0">
@@ -134,7 +137,7 @@ function Combobox({ options, value, onChange, placeholder, className }: {
       {open && (
         <div className="absolute top-full left-0 z-50 w-full bg-background border shadow-md max-h-48 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground italic">No results</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground italic">{noItemsMessage}</p>
           ) : filtered.map(opt => (
             <button
               key={opt.id}
@@ -180,11 +183,11 @@ function SectionForm({ form, setForm, courses, terms, instructors, formats, code
       <div className="grid md:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Course <span className="text-destructive">*</span></Label>
-          <Combobox options={courseOptions} value={form.courseId} onChange={id => setForm(f => ({ ...f, courseId: id }))} placeholder="Search courses…" />
+          <Combobox options={courseOptions} value={form.courseId} onChange={id => setForm(f => ({ ...f, courseId: id }))} placeholder="Search courses…" emptyMessage="No courses — add them in Registration first" />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Term <span className="text-destructive">*</span></Label>
-          <Combobox options={termOptions} value={form.termId} onChange={id => setForm(f => ({ ...f, termId: id }))} placeholder="Search terms…" />
+          <Combobox options={termOptions} value={form.termId} onChange={id => setForm(f => ({ ...f, termId: id }))} placeholder="Search terms…" emptyMessage="No terms — add them in Registration first" />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
@@ -280,6 +283,8 @@ export default function SectionsPage() {
 
   const formats = settings?.formats ?? []
   const codeRules = settings?.rules ?? []
+
+  const relevantCourses = useRelevantCourses()
 
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c]))
   const termMap = Object.fromEntries(terms.map(t => [t.id, t]))
@@ -421,9 +426,6 @@ export default function SectionsPage() {
     }
   }
 
-  if (isLoading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Loading…</div>
-  if (isError) return <div className="flex-1 flex items-center justify-center text-destructive text-sm">Failed to load sections</div>
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
@@ -482,11 +484,13 @@ export default function SectionsPage() {
         {showAdd && (
           <div className="border bg-muted/40">
             <div className="px-4 pt-3 pb-0"><h3 className="font-semibold text-sm">New Section</h3></div>
-            <SectionForm form={addForm} setForm={setAddForm} courses={courses} terms={terms} instructors={users} formats={formats} codeRules={codeRules} saving={addSaving} onCancel={() => { setShowAdd(false); setAddForm(EMPTY_FORM) }} onSubmit={handleCreate} submitLabel="Create Section" />
+            <SectionForm form={addForm} setForm={setAddForm} courses={relevantCourses} terms={terms} instructors={users} formats={formats} codeRules={codeRules} saving={addSaving} onCancel={() => { setShowAdd(false); setAddForm(EMPTY_FORM) }} onSubmit={handleCreate} submitLabel="Create Section" />
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {isLoading && <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading…</div>}
+
+        {!isLoading && (filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground italic py-6 text-center">No sections match the current filters.</p>
         ) : (
           <div className="border overflow-hidden">
@@ -496,7 +500,7 @@ export default function SectionsPage() {
               const termIsActive = term?.isActive ?? true
               const fmt = formats.find(f => f.id === s.formatId)
               return editingId === s.id && termIsActive ? (
-                <SectionForm key={s.id} form={editForm} setForm={setEditForm} courses={courses} terms={terms} instructors={users} formats={formats} codeRules={codeRules} saving={editSaving} onCancel={() => setEditingId(null)} onSubmit={handleUpdate} submitLabel="Save" />
+                <SectionForm key={s.id} form={editForm} setForm={setEditForm} courses={relevantCourses} terms={terms} instructors={users} formats={formats} codeRules={codeRules} saving={editSaving} onCancel={() => setEditingId(null)} onSubmit={handleUpdate} submitLabel="Save" />
               ) : (
                 <div key={s.id} className={cn('flex items-center gap-4 px-5 py-4 border-b last:border-b-0 bg-muted/20', !s.isActive && 'opacity-50')}>
                   <div className="flex-1 min-w-0">
@@ -535,7 +539,7 @@ export default function SectionsPage() {
               )
             })}
           </div>
-        )}
+        ))}
       </div>
 
       {/* ── Pagination footer ─────────────────────────────────────── */}
