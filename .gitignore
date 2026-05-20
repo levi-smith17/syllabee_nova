@@ -13,10 +13,6 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
 # production
 /build
 
@@ -41,3 +37,26 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+/public/
+/scripts/
+/src/
+
+# terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfplan
+infrastructure/terraform/modules/lambda/placeholders/
+infrastructure/terraform/environments/dev/placeholders/
+infrastructure/terraform/environments/prod/placeholders/
+*.local.tfvars
+
+# WebStorm
+/.idea/
+
+# Claude
+CLAUDE.md
+.claude/
+
+# Prisma - remove once refactor is fully complete
+prisma/
+**/prisma/
