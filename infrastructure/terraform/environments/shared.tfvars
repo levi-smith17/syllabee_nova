@@ -1,4 +1,4 @@
 create_oidc_provider  = false
 project               = "syllabee"
 owner                 = "levi"
-github_repo           = "levi-smith17/syllabee-nova"
+github_repo           = "levi-smith17/syllabee_nova"
