@@ -123,9 +123,9 @@ jobs:
       - name: Build Web
         run: pnpm --filter @syllabee/web build
         env:
-          VITE_API_URL: ${{ needs.terraform-apply.outputs.api_url }}
-          VITE_COGNITO_USER_POOL_ID: ${{ needs.terraform-apply.outputs.cognito_user_pool_id }}
-          VITE_COGNITO_CLIENT_ID: ${{ needs.terraform-apply.outputs.cognito_client_id }}
+          VITE_API_URL: ${{ secrets.DEV_API_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.DEV_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ secrets.DEV_COGNITO_CLIENT_ID }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -152,12 +152,12 @@ jobs:
           path: dist
 
       - name: Sync to S3
-        run: aws s3 sync dist/ s3://${{ needs.terraform-apply.outputs.web_bucket }} --delete
+        run: aws s3 sync dist/ s3://${{ secrets.DEV_WEB_BUCKET }} --delete
 
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ needs.terraform-apply.outputs.cloudfront_distribution_id }} \
+            --distribution-id ${{ secrets.DEV_CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
 
   deploy-lambda-admin:
