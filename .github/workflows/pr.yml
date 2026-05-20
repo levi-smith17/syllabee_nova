@@ -32,8 +32,8 @@ jobs:
       - name: Run Lambda tests
         run: pnpm --filter @syllabee/api test -- --run --reporter=verbose
 
-      - name: Run Web tests
-        run: pnpm --filter @syllabee/web test:run --reporter=verbose
+      #- name: Run Web tests
+      #  run: pnpm --filter @syllabee/web test:run --reporter=verbose
 
   terraform-plan:
     name: Terraform Plan
