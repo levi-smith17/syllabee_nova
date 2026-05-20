@@ -1,0 +1,130 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Lambda tests
+        run: pnpm --filter @syllabee/api test -- --run --reporter=verbose
+
+      - name: Run Web tests
+        run: pnpm --filter @syllabee/web test:run --reporter=verbose
+
+  build-lambda:
+    name: Build Lambda
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Lambda
+        run: pnpm --filter @syllabee/api build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lambda-dist
+          path: apps/api/dist
+          retention-days: 1
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: test
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEV_AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/terraform/environments/dev
+        run: terraform apply -var-file="../shared.tfvars" -var-file="dev.tfvars" -auto-approve
+
+  deploy-lambda-admin:
+    name: Deploy Lambda — Admin
+    needs: [build-lambda, terraform-apply]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: dev
+      functions: admin/users-list admin/user-create admin/user-update admin/user-delete
+    secrets:
+      aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
+
+  deploy-lambda-quicklinks:
+    name: Deploy Lambda — Quick Links
+    needs: [build-lambda, terraform-apply]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: dev
+      functions: quicklinks/list quicklinks/create quicklinks/update quicklinks/delete
+    secrets:
+      aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
+
+  deploy-lambda-registration:
+    name: Deploy Lambda — Registration
+    needs: [build-lambda, terraform-apply]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: dev
+      functions: registration/courses-list registration/course-create registration/course-update registration/course-delete registration/terms-list registration/term-create registration/term-update registration/term-delete registration/sections-list registration/section-create registration/section-update registration/section-delete
+    secrets:
+      aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
+
+  deploy-lambda-settings:
+    name: Deploy Lambda — Settings
+    needs: [build-lambda, terraform-apply]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: dev
+      functions: settings/get settings/branding-update settings/format-create settings/format-update settings/format-delete settings/rule-create settings/rule-update settings/rule-delete settings/term-length-create settings/term-length-update settings/term-length-delete
+    secrets:
+      aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}

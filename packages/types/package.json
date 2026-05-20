@@ -1,0 +1,14 @@
+{
+  "name": "@syllabee/types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "devDependencies": {
+    "@syllabee/config": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint ."
+  }
+}

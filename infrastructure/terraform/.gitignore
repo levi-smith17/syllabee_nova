@@ -1,0 +1,4 @@
+.terraform/
+*.tfplan
+plan_output.txt
+placeholder-*.zip
