@@ -1,7 +1,8 @@
 import * as React from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Loader2, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronLeft, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,28 +28,77 @@ const STATUS_COLORS: Record<string, string> = {
   DISABLED: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 }
 
-const EMPTY_FORM = { email: '', name: '', role: 'INSTRUCTOR' as 'INSTRUCTOR' | 'ADMIN' }
+type StatusFilter = 'all' | 'active' | 'pending' | 'disabled'
+type Mode = 'list' | 'add' | 'edit'
+
+const EMPTY_ADD = { email: '', name: '', role: 'INSTRUCTOR' as 'INSTRUCTOR' | 'ADMIN' }
+const EMPTY_EDIT = { name: '' }
+
+const statusChipClass = (active: boolean) =>
+  cn(
+    'flex-1 py-1 text-xs font-medium transition-colors cursor-pointer border border-yellow-400 text-center',
+    active ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-foreground hover:bg-yellow-400/10'
+  )
 
 export default function UsersPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const qc = useQueryClient()
-  const [search, setSearch] = React.useState('')
-  const [showAdd, setShowAdd] = React.useState(false)
-  const [form, setForm] = React.useState(EMPTY_FORM)
+
+  const backgroundPath: string = (location.state as any)?.backgroundLocation?.pathname ?? '/editor'
+  const closePanel = () => navigate(backgroundPath, { replace: true })
+
+  const [mode, setMode] = React.useState<Mode>('list')
+  const [editTarget, setEditTarget] = React.useState<User | null>(null)
+  const [addForm, setAddForm] = React.useState(EMPTY_ADD)
+  const [editForm, setEditForm] = React.useState(EMPTY_EDIT)
   const [saving, setSaving] = React.useState(false)
   const [deleteTarget, setDeleteTarget] = React.useState<User | null>(null)
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState('')
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all')
 
-  const { data: users = [], isLoading, isError } = useQuery<User[]>({
+  const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: () => apiFetch<{ data: User[] }>('/admin/users').then(r => r.data ?? []),
     retry: 1,
   })
 
+  function statusLabel(user: User) {
+    if (!user.enabled) return 'DISABLED'
+    return user.status
+  }
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return users
-    return users.filter(u => (u.email ?? '').toLowerCase().includes(q) || (u.name ?? '').toLowerCase().includes(q))
-  }, [users, search])
+    return users.filter(u => {
+      const sl = statusLabel(u)
+      if (statusFilter === 'active' && sl !== 'CONFIRMED') return false
+      if (statusFilter === 'pending' && sl !== 'FORCE_CHANGE_PASSWORD') return false
+      if (statusFilter === 'disabled' && sl !== 'DISABLED') return false
+      if (q && !(u.email ?? '').toLowerCase().includes(q) && !(u.name ?? '').toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [users, search, statusFilter])
+
+  function openAdd() {
+    setAddForm(EMPTY_ADD)
+    setEditTarget(null)
+    setMode('add')
+  }
+
+  function openEdit(user: User) {
+    setEditForm({ name: user.name ?? '' })
+    setEditTarget(user)
+    setMode('edit')
+  }
+
+  function backToList() {
+    setMode('list')
+    setEditTarget(null)
+    setAddForm(EMPTY_ADD)
+    setEditForm(EMPTY_EDIT)
+  }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -56,18 +106,38 @@ export default function UsersPage() {
     try {
       const res = await apiFetch<{ data: { id: string; email: string } }>('/admin/users', {
         method: 'POST',
-        body: JSON.stringify({ email: form.email.trim(), name: form.name.trim() || null, role: form.role }),
+        body: JSON.stringify({ email: addForm.email.trim(), name: addForm.name.trim() || null, role: addForm.role }),
       })
       qc.setQueryData<User[]>(['users'], prev => [
         ...(prev ?? []),
-        { id: res.data.id, email: res.data.email, name: form.name.trim() || null, status: 'FORCE_CHANGE_PASSWORD', enabled: true, createdAt: new Date().toISOString() },
+        { id: res.data.id, email: res.data.email, name: addForm.name.trim() || null, status: 'FORCE_CHANGE_PASSWORD', enabled: true, createdAt: new Date().toISOString() },
       ])
       toast.success('User invited — they will receive a temporary password by email.')
-      setForm(EMPTY_FORM)
-      setShowAdd(false)
+      backToList()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
       toast.error(msg.includes('409') ? 'A user with that email already exists.' : 'Failed to invite user.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editTarget) return
+    setSaving(true)
+    try {
+      await apiFetch(`/admin/users/${editTarget.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: editForm.name.trim() || null }),
+      })
+      qc.setQueryData<User[]>(['users'], prev =>
+        (prev ?? []).map(u => u.id === editTarget.id ? { ...u, name: editForm.name.trim() || null } : u)
+      )
+      toast.success('User updated.')
+      backToList()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update user.')
     } finally {
       setSaving(false)
     }
@@ -89,112 +159,199 @@ export default function UsersPage() {
     }
   }
 
-  function statusLabel(user: User) {
-    if (!user.enabled) return 'DISABLED'
-    return user.status
-  }
+  const isFormMode = mode === 'add' || mode === 'edit'
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* ── Fixed header ─────────────────────────────────────────── */}
-      <div className="shrink-0 bg-muted border-b px-6 pt-4 pb-3 flex flex-col gap-1.5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-baseline gap-2 min-w-0 md:h-8">
-            <h1 className="text-xl text-primary font-bold leading-none shrink-0">Users</h1>
-            <p className="text-xs text-muted-foreground truncate"> — {users.length} {users.length === 1 ? 'user' : 'users'} registered</p>
-          </div>
-          <Button size="sm" onClick={() => setShowAdd(true)} className="gap-2 shrink-0 rounded-none bg-yellow-400 text-yellow-900 border-yellow-400 hover:bg-yellow-500">
-            <Plus className="h-4 w-4" /> Invite User
+      {/* ── Panel header ─────────────────────────────────────────── */}
+      <div className="shrink-0 bg-yellow-400 border-b border-yellow-500 px-4 py-3 flex items-center gap-2">
+        {isFormMode && (
+          <button onClick={backToList} className="p-1 rounded-sm text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+        <h1 className="text-sm font-semibold text-yellow-900 flex-1 truncate">
+          {mode === 'add' ? 'Invite User' : mode === 'edit' ? 'Edit User' : 'Users'}
+        </h1>
+        {!isFormMode && (
+          <Button
+            size="sm"
+            onClick={openAdd}
+            className="gap-1.5 rounded-none text-xs h-7 px-2.5 bg-sidebar-foreground text-sidebar border-sidebar-foreground hover:bg-sidebar-foreground/90"
+          >
+            <Plus className="h-3.5 w-3.5" /> Invite
           </Button>
-        </div>
-
-        <div className={cn('flex items-center h-8 border border-transparent bg-background transition-colors focus-within:border-primary', 'md:min-w-36 md:max-w-72')}>
-          <Search className="ml-2.5 h-3.5 w-3.5 shrink-0 text-muted-foreground pointer-events-none" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            className="flex-1 min-w-0 bg-transparent text-xs px-2 outline-none placeholder:text-muted-foreground"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="mr-2 text-muted-foreground hover:text-foreground">
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        )}
+        <button onClick={closePanel} className="p-1 rounded text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
-      {/* ── Scrollable list ───────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
-
-        {showAdd && (
-          <form onSubmit={handleInvite} className="border p-5 space-y-4 bg-muted/40 mb-6 max-w-xl">
-            <h3 className="font-semibold text-sm">Invite User</h3>
-            <p className="text-xs text-muted-foreground">The user will receive an email with a temporary password to set up their account.</p>
-            <div className="grid md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="inv-email">Email</Label>
-                <Input id="inv-email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="instructor@school.edu" required className="rounded-none" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="inv-name">Name (optional)</Label>
-                <Input id="inv-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" className="rounded-none" />
-              </div>
+      {isFormMode ? (
+        /* ── Add / Edit form ─────────────────────────────────────── */
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <form onSubmit={mode === 'add' ? handleInvite : handleUpdate}>
+            <div className="p-4 space-y-4 border-b border-muted-foreground/25">
+              {mode === 'add' ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="u-email" className="text-xs">Email <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="u-email"
+                      type="email"
+                      value={addForm.email}
+                      onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="instructor@school.edu"
+                      required
+                      className="rounded-none h-8 text-sm w-full bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="u-name" className="text-xs">Name</Label>
+                    <Input
+                      id="u-name"
+                      value={addForm.name}
+                      onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Jane Smith"
+                      className="rounded-none h-8 text-sm w-full bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Role <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-4 pt-0.5">
+                      {(['INSTRUCTOR', 'ADMIN'] as const).map(r => (
+                        <label key={r} className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input type="radio" name="role" value={r} checked={addForm.role === r} onChange={() => setAddForm(f => ({ ...f, role: r }))} />
+                          {r.charAt(0) + r.slice(1).toLowerCase()}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">The user will receive an email with a temporary password.</p>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="text-sm">{editTarget?.email}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="u-edit-name" className="text-xs">Name</Label>
+                    <Input
+                      id="u-edit-name"
+                      value={editForm.name}
+                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Jane Smith"
+                      className="rounded-none h-8 text-sm w-full bg-background"
+                    />
+                  </div>
+                </>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Role</Label>
-              <div className="flex gap-4">
-                {(['INSTRUCTOR', 'ADMIN'] as const).map(r => (
-                  <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="radio" name="role" value={r} checked={form.role === r} onChange={() => setForm(f => ({ ...f, role: r }))} />
-                    {r.charAt(0) + r.slice(1).toLowerCase()}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col-reverse md:flex-row gap-2 justify-between">
-              <Button type="button" variant="ghost" size="sm" className="rounded-none bg-muted/70" onClick={() => { setShowAdd(false); setForm(EMPTY_FORM) }} disabled={saving}>Cancel</Button>
-              <Button type="submit" size="sm" className="rounded-none" disabled={saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Send Invite
+            <div className="px-4 py-3 space-y-2">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={saving}
+                className="w-full rounded-none h-9 bg-yellow-400 text-yellow-900 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500"
+              >
+                {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                {mode === 'add' ? 'Send Invite' : 'Save Changes'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={backToList}
+                className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+              >
+                Cancel
               </Button>
             </div>
           </form>
-        )}
-
-        {isLoading && <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading…</div>}
-
-        {!isLoading && (filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic py-6 text-center">No users found.</p>
-        ) : (
-          <div className="divide-y border max-w-3xl">
-            {filtered.map(user => {
-              const initials = ((user.name ?? user.email ?? '?')[0] ?? '?').toUpperCase()
-              const sl = statusLabel(user)
-              const statusClass = STATUS_COLORS[sl] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-              return (
-                <div key={user.id} className="flex items-center gap-4 px-5 py-4">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
-                    {initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{user.name ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusClass}`}>
-                      {sl === 'FORCE_CHANGE_PASSWORD' ? 'Pending' : sl === 'CONFIRMED' ? 'Active' : sl.charAt(0) + sl.slice(1).toLowerCase()}
-                    </span>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(user)} disabled={deletingId === user.id}>
-                      {deletingId === user.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
+        </div>
+      ) : (
+        <>
+          {/* ── Filter row ────────────────────────────────────────── */}
+          <div className="shrink-0 border-b border-muted-foreground/25 p-3 flex flex-col gap-2">
+            <div className="flex items-center h-7 border border-transparent bg-background/60 transition-colors focus-within:border-primary">
+              <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="flex-1 min-w-0 bg-transparent text-xs px-2 outline-none placeholder:text-muted-foreground"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="mr-1.5 text-muted-foreground hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1.5">
+              {(['all', 'active', 'pending', 'disabled'] as StatusFilter[]).map(s => (
+                <button key={s} onClick={() => setStatusFilter(s)} className={statusChipClass(statusFilter === s)}>
+                  {s === 'all' ? 'All' : s === 'active' ? 'Active' : s === 'pending' ? 'Pending' : 'Disabled'}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+
+          {/* ── User list ─────────────────────────────────────────── */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {isLoading && (
+              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…
+              </div>
+            )}
+            {!isLoading && filtered.length === 0 && (
+              <p className="text-sm text-muted-foreground italic py-8 text-center px-4">
+                {users.length === 0 ? 'No users yet — invite one above.' : 'No users match the current filters.'}
+              </p>
+            )}
+            {!isLoading && filtered.length > 0 && (
+              <div>
+                {filtered.map(user => {
+                  const initials = ((user.name ?? user.email ?? '?')[0] ?? '?').toUpperCase()
+                  const sl = statusLabel(user)
+                  const statusClass = STATUS_COLORS[sl] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  const statusDisplay = sl === 'FORCE_CHANGE_PASSWORD' ? 'Pending' : sl === 'CONFIRMED' ? 'Active' : sl.charAt(0) + sl.slice(1).toLowerCase()
+                  return (
+                    <div key={user.id} className="flex items-center gap-2 px-3 py-2.5 border-b border-muted-foreground/25 last:border-b-0">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{user.name ?? '—'}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusClass}`}>
+                          {statusDisplay}
+                        </span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 hover:text-yellow-600 hover:bg-yellow-400/15" onClick={() => openEdit(user)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          onClick={() => setDeleteTarget(user)}
+                          disabled={deletingId === user.id}
+                        >
+                          {deletingId === user.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
         <DialogContent>

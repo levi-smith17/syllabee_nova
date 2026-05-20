@@ -2,11 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { handler } from './handler'
 
 const mockSend = vi.hoisted(() => vi.fn())
+const mockDynamoSend = vi.hoisted(() => vi.fn())
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', () => ({
     CognitoIdentityProviderClient: function () { return { send: mockSend } },
     AdminCreateUserCommand: function () {},
     AdminAddUserToGroupCommand: function () {},
+}))
+
+vi.mock('../../shared/db', () => ({
+    dynamo: { send: mockDynamoSend },
+    TABLE_NAME: 'test-table',
 }))
 
 const makeEvent = (body: object) => ({
@@ -35,20 +41,24 @@ describe('admin/user-create', () => {
 
     it('creates user and returns 201', async () => {
         mockSend.mockResolvedValueOnce({ User: { Attributes: [{ Name: 'sub', Value: 'new-sub' }] } })
+        mockDynamoSend.mockResolvedValueOnce({})
 
         const result = await handler(makeEvent({ email: 'new@test.com', name: 'New User' })) as any
         expect(result.statusCode).toBe(201)
         expect(JSON.parse(result.body).data).toMatchObject({ id: 'new-sub', email: 'new@test.com' })
         expect(mockSend).toHaveBeenCalledTimes(1)
+        expect(mockDynamoSend).toHaveBeenCalledTimes(1)
     })
 
     it('also adds user to Admin group when role=ADMIN', async () => {
         mockSend
             .mockResolvedValueOnce({ User: { Attributes: [{ Name: 'sub', Value: 'sub1' }] } })
             .mockResolvedValueOnce({})
+        mockDynamoSend.mockResolvedValueOnce({})
 
         await handler(makeEvent({ email: 'admin@test.com', role: 'ADMIN' }))
         expect(mockSend).toHaveBeenCalledTimes(2)
+        expect(mockDynamoSend).toHaveBeenCalledTimes(1)
     })
 
     it('returns 409 for duplicate email (UsernameExistsException)', async () => {

@@ -1,6 +1,8 @@
 import { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminAddUserToGroupCommand } from '@aws-sdk/client-cognito-identity-provider'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 } from 'aws-lambda'
 import { isAdmin } from '../../shared/auth'
+import { dynamo, TABLE_NAME } from '../../shared/db'
 import { toApiGatewayResponse, created, badRequest, forbidden, serverError } from '../../shared/response'
 
 const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION ?? 'us-east-1' })
@@ -29,6 +31,19 @@ export const handler = async (
         }))
 
         const userId = res.User?.Attributes?.find(a => a.Name === 'sub')?.Value ?? email
+
+        await dynamo.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+                pk: `USER#${userId}`,
+                sk: 'METADATA',
+                email,
+                ...(name ? { name } : {}),
+                isAdmin: role === 'ADMIN',
+                status: 'active',
+                createdAt: new Date().toISOString(),
+            },
+        }))
 
         if (role === 'ADMIN') {
             await cognito.send(new AdminAddUserToGroupCommand({

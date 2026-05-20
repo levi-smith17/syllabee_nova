@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Check, ChevronLeft, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
@@ -44,7 +44,11 @@ const prefixChipClass = (active: boolean) =>
 
 export default function CoursesPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const qc = useQueryClient()
+
+  const backgroundPath: string = (location.state as any)?.backgroundLocation?.pathname ?? '/editor'
+  const closePanel = () => navigate(backgroundPath, { replace: true })
 
   const [mode, setMode] = React.useState<Mode>('list')
   const [editTarget, setEditTarget] = React.useState<Course | null>(null)
@@ -77,13 +81,15 @@ export default function CoursesPage() {
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
-    return courses.filter(c => {
-      if (prefixFilter !== 'all' && !c.code.startsWith(prefixFilter + '-')) return false
-      if (statusFilter === 'active' && !c.isActive) return false
-      if (statusFilter === 'inactive' && c.isActive) return false
-      if (q && !c.code.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
-      return true
-    })
+    return courses
+      .filter(c => {
+        if (prefixFilter !== 'all' && !c.code.startsWith(prefixFilter + '-')) return false
+        if (statusFilter === 'active' && !c.isActive) return false
+        if (statusFilter === 'inactive' && c.isActive) return false
+        if (q && !c.code.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
+        return true
+      })
+      .sort((a, b) => a.code.localeCompare(b.code) || a.title.localeCompare(b.title))
   }, [courses, search, prefixFilter, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -207,7 +213,7 @@ export default function CoursesPage() {
       {/* ── Panel header ─────────────────────────────────────────── */}
       <div className="shrink-0 bg-yellow-400 border-b border-yellow-500 px-4 py-3 flex items-center gap-2">
         {isFormMode && (
-          <button onClick={backToList} className="p-1 text-yellow-800 hover:text-yellow-900 transition-colors">
+          <button onClick={backToList} className="p-1 rounded-sm text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
@@ -223,7 +229,7 @@ export default function CoursesPage() {
             <Plus className="h-3.5 w-3.5" /> Add
           </Button>
         )}
-        <button onClick={() => navigate(-1)} className="p-1 text-yellow-800 hover:text-yellow-900 transition-colors">
+        <button onClick={closePanel} className="p-1 rounded text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -358,11 +364,11 @@ export default function CoursesPage() {
 
           {/* ── Pagination row ────────────────────────────────────── */}
           {totalPages > 1 && (
-            <div className="shrink-0 border-b px-3 py-1.5 flex items-center justify-between">
+            <div className="shrink-0 border-b border-muted-foreground/25 px-3 py-1.5 flex items-center justify-between">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="text-xs px-2 py-0.5 disabled:opacity-40 hover:text-primary transition-colors"
+                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
                 ‹ Prev
               </button>
@@ -372,7 +378,7 @@ export default function CoursesPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="text-xs px-2 py-0.5 disabled:opacity-40 hover:text-primary transition-colors"
+                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
                 Next ›
               </button>
@@ -399,7 +405,7 @@ export default function CoursesPage() {
                   <div
                     key={course.id}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2.5 border-b last:border-b-0',
+                      'flex items-center gap-2 px-3 py-2.5 border-b border-muted-foreground/25 last:border-b-0',
                       !course.isActive && 'opacity-50'
                     )}
                   >
@@ -422,7 +428,7 @@ export default function CoursesPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-1.5 text-[10px]"
+                        className="h-7 px-1.5 text-[10px] hover:text-yellow-600 hover:bg-yellow-400/15"
                         onClick={() => handleToggle(course.id, course.isActive)}
                         disabled={togglingId === course.id}
                       >
@@ -434,7 +440,7 @@ export default function CoursesPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7"
+                        className="h-7 w-7 hover:text-yellow-600 hover:bg-yellow-400/15"
                         onClick={() => openEdit(course)}
                       >
                         <Pencil className="h-3 w-3" />
@@ -442,7 +448,7 @@ export default function CoursesPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                         onClick={() => setDeleteTarget({ id: course.id, code: course.code })}
                         disabled={deletingId === course.id}
                       >

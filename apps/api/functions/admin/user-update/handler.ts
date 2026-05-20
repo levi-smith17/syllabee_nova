@@ -1,3 +1,4 @@
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import {
     CognitoIdentityProviderClient,
     AdminUpdateUserAttributesCommand,
@@ -6,6 +7,7 @@ import {
     AdminListGroupsForUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 } from 'aws-lambda'
+import { dynamo, TABLE_NAME } from '../../shared/db'
 import { isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, ok, badRequest, forbidden, serverError } from '../../shared/response'
 
@@ -18,8 +20,8 @@ export const handler = async (
     try {
         if (!await isAdmin(event)) return toApiGatewayResponse(forbidden())
 
-        const email = getPathId(event)
-        if (!email) return toApiGatewayResponse(badRequest('user email is required'))
+        const id = getPathId(event)
+        if (!id) return toApiGatewayResponse(badRequest('id is required'))
 
         const body = JSON.parse(event.body ?? '{}')
         const { name, role } = body
@@ -27,7 +29,7 @@ export const handler = async (
         if (name !== undefined) {
             await cognito.send(new AdminUpdateUserAttributesCommand({
                 UserPoolId: USER_POOL_ID,
-                Username: email,
+                Username: id,
                 UserAttributes: [{ Name: 'name', Value: String(name) }],
             }))
         }
@@ -35,26 +37,51 @@ export const handler = async (
         if (role !== undefined) {
             const groupsRes = await cognito.send(new AdminListGroupsForUserCommand({
                 UserPoolId: USER_POOL_ID,
-                Username: email,
+                Username: id,
             }))
             const inAdmin = groupsRes.Groups?.some(g => g.GroupName === 'Admin') ?? false
 
             if (role === 'ADMIN' && !inAdmin) {
                 await cognito.send(new AdminAddUserToGroupCommand({
                     UserPoolId: USER_POOL_ID,
-                    Username: email,
+                    Username: id,
                     GroupName: 'Admin',
                 }))
             } else if (role !== 'ADMIN' && inAdmin) {
                 await cognito.send(new AdminRemoveUserFromGroupCommand({
                     UserPoolId: USER_POOL_ID,
-                    Username: email,
+                    Username: id,
                     GroupName: 'Admin',
                 }))
             }
         }
 
-        return toApiGatewayResponse(ok({ email }))
+        // Sync changed fields to DDB
+        const ddbExpressions: string[] = []
+        const ddbNames: Record<string, string> = {}
+        const ddbValues: Record<string, unknown> = {}
+
+        if (name !== undefined) {
+            ddbExpressions.push('#name = :name')
+            ddbNames['#name'] = 'name'
+            ddbValues[':name'] = name ? String(name) : null
+        }
+        if (role !== undefined) {
+            ddbExpressions.push('isAdmin = :isAdmin')
+            ddbValues[':isAdmin'] = role === 'ADMIN'
+        }
+
+        if (ddbExpressions.length > 0) {
+            await dynamo.send(new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: { pk: `USER#${id}`, sk: 'METADATA' },
+                UpdateExpression: `SET ${ddbExpressions.join(', ')}`,
+                ...(Object.keys(ddbNames).length > 0 ? { ExpressionAttributeNames: ddbNames } : {}),
+                ExpressionAttributeValues: ddbValues,
+            }))
+        }
+
+        return toApiGatewayResponse(ok({ id }))
     } catch (err) {
         console.error(err)
         return toApiGatewayResponse(serverError())

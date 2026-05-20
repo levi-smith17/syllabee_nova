@@ -18,7 +18,6 @@ export const handler = async (
             KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
             FilterExpression: 'id = :id',
             ExpressionAttributeValues: { ':pk': 'SETTINGS', ':prefix': 'QUICKLINK#', ':id': id },
-            Limit: 1,
         }))
         const item = res.Items?.[0]
         if (!item) return toApiGatewayResponse(notFound('Quick link not found'))

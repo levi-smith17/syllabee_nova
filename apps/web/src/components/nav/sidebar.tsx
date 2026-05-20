@@ -25,6 +25,7 @@ type NavItem = {
   label: string
   href: string
   icon: React.ReactNode
+  panelRoute?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -33,14 +34,14 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const REGISTRATION_ITEMS: NavItem[] = [
-  { label: 'Courses', href: '/registration/courses', icon: <GraduationCap className="h-5 w-5" /> },
-  { label: 'Sections', href: '/registration/sections', icon: <Layers className="h-5 w-5" /> },
-  { label: 'Terms', href: '/registration/terms', icon: <Calendar className="h-5 w-5" /> },
+  { label: 'Courses', href: '/registration/courses', icon: <GraduationCap className="h-5 w-5" />, panelRoute: true },
+  { label: 'Sections', href: '/registration/sections', icon: <Layers className="h-5 w-5" />, panelRoute: true },
+  { label: 'Terms', href: '/registration/terms', icon: <Calendar className="h-5 w-5" />, panelRoute: true },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [
-  { label: 'Users', href: '/admin/users', icon: <Users className="h-5 w-5" /> },
-  { label: 'Quick Links', href: '/admin/quick-links', icon: <LinkIcon className="h-5 w-5" /> },
+  { label: 'Quick Links', href: '/admin/quick-links', icon: <LinkIcon className="h-5 w-5" />, panelRoute: true },
+  { label: 'Users', href: '/admin/users', icon: <Users className="h-5 w-5" />, panelRoute: true },
   { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-5 w-5" /> },
 ]
 
@@ -341,12 +342,20 @@ function NavLink({
   collapsed: boolean
   active: boolean
 }) {
+  const location = useLocation()
+  // Preserve the existing backgroundLocation when jumping between panel routes,
+  // otherwise set the current location as the new background.
+  const linkState = item.panelRoute
+    ? { backgroundLocation: (location.state as any)?.backgroundLocation ?? location }
+    : undefined
+
   return (
     <li>
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
             to={item.href}
+            state={linkState}
             className={cn(
               'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground',
