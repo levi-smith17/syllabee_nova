@@ -1,0 +1,18 @@
+{
+  "extends": "@syllabee/config/tsconfig.lambda.json",
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@syllabee/types": ["../../packages/types/index.ts"]
+    },
+    "types": ["node"],
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "include": ["functions/**/*.ts"],
+  "exclude": ["node_modules", "dist", "functions/**/*.test.ts"],
+  "references": [
+    { "path": "../../packages/types" }
+  ]
+}

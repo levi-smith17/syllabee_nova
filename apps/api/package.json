@@ -1,0 +1,29 @@
+{
+  "name": "@syllabee/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "latest",
+    "@aws-sdk/client-dynamodb": "latest",
+    "@aws-sdk/client-s3": "latest",
+    "@aws-sdk/client-sesv2": "latest",
+    "@aws-sdk/client-ssm": "latest",
+    "@aws-sdk/lib-dynamodb": "latest",
+    "@aws-sdk/s3-request-presigner": "latest",
+    "jose": "latest"
+  },
+  "devDependencies": {
+    "@syllabee/config": "workspace:*",
+    "@syllabee/types": "workspace:*",
+    "@types/aws-lambda": "latest",
+    "@types/node": "latest",
+    "@vitest/coverage-v8": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
