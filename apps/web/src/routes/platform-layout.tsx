@@ -12,7 +12,7 @@ interface QuickLinksResponse {
 export default function PlatformLayout() {
   const { data: quickLinks } = useQuery({
     queryKey: ['quick-links'],
-    queryFn: () => apiFetch<QuickLinksResponse>('/quick-links'),
+    queryFn: () => apiFetch<QuickLinksResponse>('/admin/quick-links'),
     staleTime: 1000 * 60 * 10,
   })
 

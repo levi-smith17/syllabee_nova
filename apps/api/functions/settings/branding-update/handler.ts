@@ -8,7 +8,7 @@ export const handler = async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer
 ): Promise<APIGatewayProxyResultV2> => {
     try {
-        if (!isAdmin(event)) return toApiGatewayResponse(forbidden())
+        if (!await isAdmin(event)) return toApiGatewayResponse(forbidden())
 
         const body = JSON.parse(event.body ?? '{}')
         const { institutionName, primaryColor, secondaryColor, logoUrl, faviconUrl } = body
