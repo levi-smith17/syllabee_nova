@@ -177,7 +177,7 @@ jobs:
     uses: ./.github/workflows/deploy-lambda.yml
     with:
       environment: dev
-      functions: editor/block-copy editor/block-create editor/block-delete editor/block-reorder editor/block-update editor/grading-scale-create editor/grading-scale-delete editor/grading-scale-update editor/grading-scales-list editor/segment-copy editor/segment-create editor/segment-delete editor/segment-reorder editor/segment-update editor/syllabi-list editor/syllabus-create editor/syllabus-delete editor/syllabus-get editor/syllabus-lock editor/syllabus-update
+      functions: editor/block-copy editor/block-create editor/block-delete editor/block-reorder editor/block-update editor/grading-scale-create editor/grading-scale-delete editor/grading-scale-update editor/grading-scales-list editor/sections-list editor/segment-copy editor/segment-create editor/segment-delete editor/segment-reorder editor/segment-update editor/syllabi-list editor/syllabus-create editor/syllabus-delete editor/syllabus-get editor/syllabus-lock editor/syllabus-update
     secrets:
       aws_role_arn: ${{ secrets.DEV_AWS_ROLE_ARN }}
       aws_region: ${{ secrets.AWS_REGION }}

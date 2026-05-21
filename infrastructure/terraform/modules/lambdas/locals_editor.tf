@@ -36,6 +36,10 @@ locals {
       policy_arn = var.dynamodb_read_policy_arn
       route_key  = "GET /editor/grading-scales"
     }
+    "editor-sections-list" = {
+      policy_arn = var.dynamodb_read_policy_arn
+      route_key  = "GET /editor/sections"
+    }
     "editor-segment-copy" = {
       policy_arn = var.dynamodb_write_policy_arn
       route_key  = "POST /editor/syllabi/{id}/segments/copy"

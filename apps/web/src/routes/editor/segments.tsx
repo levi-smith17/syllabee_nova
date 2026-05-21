@@ -554,7 +554,7 @@ export function SegmentColumn({
 
             {col2Mode === 'segmentEdit' && editingSegmentId && (
                 <>
-                    <ColHeader title="Edit Segment" onBack={() => setCol2Mode('segmentList')} />
+                    <ColHeader title="Edit Segment" subtitle="" onBack={() => setCol2Mode('segmentList')} />
                     <SegmentForm
                         mode="edit"
                         segment={editingSegment}
