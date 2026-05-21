@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Check, ChevronLeft, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 
 interface Course {
@@ -34,13 +35,70 @@ const statusChipClass = (active: boolean) =>
     active ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-foreground hover:bg-yellow-400/10'
   )
 
-const prefixChipClass = (active: boolean) =>
-  cn(
-    'flex-1 py-1 text-xs font-medium transition-colors cursor-pointer border text-center',
-    active
-      ? 'bg-sidebar-foreground text-sidebar border-sidebar-foreground'
-      : 'text-sidebar-foreground border-sidebar-foreground/40 hover:bg-sidebar-foreground/10'
+// ── FilterDropdown (multi-select) ─────────────────────────────────────────────
+function FilterDropdown({ label, options, selected, onToggle, onClear }: {
+  label: string
+  options: { id: string; label: string }[]
+  selected: Set<string>
+  onToggle: (id: string) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (!open) return
+    function handle(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [open])
+  const count = selected.size
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'flex items-center justify-between gap-1.5 h-7 px-2.5 text-xs font-medium border transition-colors border-sidebar-foreground w-full',
+          count > 0 ? 'bg-sidebar-foreground text-sidebar' : 'bg-background/60 text-foreground hover:bg-sidebar-foreground/10'
+        )}
+      >
+        <div className="flex gap-2">
+          {label}
+          {count > 0 && (
+            <span className="flex items-center justify-center h-4 min-w-4 px-1 text-[10px] font-bold bg-sidebar text-sidebar-foreground">
+              {count}
+            </span>
+          )}
+        </div>
+        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-50 w-full bg-background border shadow-md">
+          <div className="max-h-56 overflow-y-auto py-1">
+            {options.map(opt => (
+              <label key={opt.id} className="flex items-center gap-2.5 px-3 py-1.5 text-xs cursor-pointer hover:bg-muted select-none">
+                <input
+                  type="checkbox"
+                  checked={selected.has(opt.id)}
+                  onChange={() => onToggle(opt.id)}
+                  style={{ accentColor: 'hsl(var(--sidebar-foreground))' }}
+                  className="h-3.5 w-3.5"
+                />
+                <span className="truncate">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          {count > 0 && (
+            <div className="border-t">
+              <button onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground px-3 py-2 w-full">
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
+}
 
 export default function CoursesPage() {
   const navigate = useNavigate()
@@ -59,7 +117,7 @@ export default function CoursesPage() {
   const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; code: string } | null>(null)
 
   const [search, setSearch] = React.useState('')
-  const [prefixFilter, setPrefixFilter] = React.useState('all')
+  const [prefixFilter, setPrefixFilter] = React.useState<Set<string>>(new Set())
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all')
   const [page, setPage] = React.useState(1)
 
@@ -83,7 +141,7 @@ export default function CoursesPage() {
     const q = search.trim().toLowerCase()
     return courses
       .filter(c => {
-        if (prefixFilter !== 'all' && !c.code.startsWith(prefixFilter + '-')) return false
+        if (prefixFilter.size > 0 && !prefixFilter.has(c.code.split('-')[0])) return false
         if (statusFilter === 'active' && !c.isActive) return false
         if (statusFilter === 'inactive' && c.isActive) return false
         if (q && !c.code.toLowerCase().includes(q) && !c.title.toLowerCase().includes(q)) return false
@@ -246,7 +304,7 @@ export default function CoursesPage() {
                   value={form.code}
                   onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
                   placeholder="CIS-121S"
-                  className="uppercase rounded-none h-8 text-sm w-full bg-background"
+                  className="uppercase rounded-none h-8 text-sm w-full"
                   required
                 />
               </div>
@@ -257,7 +315,7 @@ export default function CoursesPage() {
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Introduction to Programming"
-                  className="rounded-none h-8 text-sm w-full bg-background"
+                  className="rounded-none h-8 text-sm w-full"
                   required
                 />
               </div>
@@ -270,7 +328,7 @@ export default function CoursesPage() {
                   max={12}
                   value={form.creditHours}
                   onChange={e => setForm(f => ({ ...f, creditHours: Number(e.target.value) }))}
-                  className="rounded-none h-8 text-sm w-full bg-background"
+                  className="rounded-none h-8 text-sm w-full"
                   required
                 />
               </div>
@@ -281,24 +339,17 @@ export default function CoursesPage() {
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Brief course description…"
-                  className="rounded-none h-8 text-sm w-full bg-background"
+                  className="rounded-none h-8 text-sm w-full "
                 />
               </div>
-              <label className="flex items-center gap-2.5 text-xs cursor-pointer select-none">
-                <span className={cn(
-                  'relative flex h-5 w-5 shrink-0 items-center justify-center border border-background bg-background transition-colors shadow-sm',
-                  form.isInternship ? 'border-ring' : ''
-                )}>
-                  <input
-                    type="checkbox"
-                    checked={form.isInternship}
-                    onChange={e => setForm(f => ({ ...f, isInternship: e.target.checked }))}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  />
-                  {form.isInternship && <Check className="h-3.5 w-3.5 text-ring stroke-[3]" />}
-                </span>
-                Internship-eligible course
-              </label>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="isInternship"
+                  checked={form.isInternship}
+                  onCheckedChange={v => setForm(f => ({ ...f, isInternship: v }))}
+                />
+                <Label htmlFor="isInternship" className="text-xs cursor-pointer">Internship-eligible course</Label>
+              </div>
             </div>
 
             {/* ── Buttons ─────────────────────────────────────────── */}
@@ -318,7 +369,7 @@ export default function CoursesPage() {
                 size="sm"
                 disabled={saving}
                 onClick={backToList}
-                className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
               >
                 Cancel
               </Button>
@@ -351,14 +402,13 @@ export default function CoursesPage() {
               ))}
             </div>
             {prefixes.length > 0 && (
-              <div className="flex gap-1.5">
-                <button onClick={() => { setPrefixFilter('all'); setPage(1) }} className={prefixChipClass(prefixFilter === 'all')}>All</button>
-                {prefixes.map(p => (
-                  <button key={p} onClick={() => { setPrefixFilter(p === prefixFilter ? 'all' : p); setPage(1) }} className={prefixChipClass(prefixFilter === p)}>
-                    {p}
-                  </button>
-                ))}
-              </div>
+              <FilterDropdown
+                label="Code Prefix"
+                options={prefixes.map(p => ({ id: p, label: p }))}
+                selected={prefixFilter}
+                onToggle={p => { setPrefixFilter(prev => { const next = new Set(prev); next.has(p) ? next.delete(p) : next.add(p); return next }); setPage(1) }}
+                onClear={() => { setPrefixFilter(new Set()); setPage(1) }}
+              />
             )}
           </div>
 
@@ -368,9 +418,9 @@ export default function CoursesPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                ‹ Prev
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
               </button>
               <span className="text-xs text-muted-foreground">
                 {page} / {totalPages}
@@ -378,9 +428,9 @@ export default function CoursesPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                Next ›
+                Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           )}

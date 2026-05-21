@@ -72,7 +72,7 @@ export default function PlatformLayout() {
                 onClick={closePanel}
               />
               {/* Panel */}
-              <div className="absolute top-0 left-0 h-full w-full md:w-96 bg-muted z-20 shadow-xl border-r overflow-hidden">
+              <div className="absolute top-0 left-0 h-full w-full md:w-96 bg-background z-20 shadow-xl border-r overflow-hidden">
                 <Outlet />
               </div>
             </>

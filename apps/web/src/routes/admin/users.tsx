@@ -196,15 +196,15 @@ export default function UsersPage() {
               {mode === 'add' ? (
                 <>
                   <div className="space-y-1.5">
-                    <Label htmlFor="u-email" className="text-xs">Email <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="u-email" className="text-xs">Email</Label>
                     <Input
                       id="u-email"
                       type="email"
                       value={addForm.email}
                       onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="instructor@school.edu"
+                      placeholder="instructor@example.com"
                       required
-                      className="rounded-none h-8 text-sm w-full bg-background"
+                      className="rounded-none h-8 text-sm w-full"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -213,19 +213,58 @@ export default function UsersPage() {
                       id="u-name"
                       value={addForm.name}
                       onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Jane Smith"
-                      className="rounded-none h-8 text-sm w-full bg-background"
+                      placeholder="John Doe"
+                      required
+                      className="rounded-none h-8 text-sm w-full"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Role <span className="text-destructive">*</span></Label>
-                    <div className="flex gap-4 pt-0.5">
-                      {(['INSTRUCTOR', 'ADMIN'] as const).map(r => (
-                        <label key={r} className="flex items-center gap-2 text-xs cursor-pointer">
-                          <input type="radio" name="role" value={r} checked={addForm.role === r} onChange={() => setAddForm(f => ({ ...f, role: r }))} />
-                          {r.charAt(0) + r.slice(1).toLowerCase()}
-                        </label>
-                      ))}
+                    <Label className="text-xs">Role</Label>
+                    <div className="flex flex-col gap-2 pt-0.5">
+                      {([
+                        {
+                          value: 'INSTRUCTOR',
+                          label: 'Instructor',
+                          description: 'Can create and manage master syllabi and view student progress.',
+                        },
+                        {
+                          value: 'ADMIN',
+                          label: 'Admin',
+                          description: 'Full access — includes all instructor capabilities plus user management and platform settings.',
+                        },
+                      ] as const).map(({ value, label, description }) => {
+                        const selected = addForm.role === value
+                        return (
+                          <label
+                            key={value}
+                            className={cn(
+                              'flex items-start gap-3 border p-3 cursor-pointer transition-colors',
+                              selected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50 hover:bg-muted/40'
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="role"
+                              value={value}
+                              checked={selected}
+                              onChange={() => setAddForm(f => ({ ...f, role: value }))}
+                              className="sr-only"
+                            />
+                            <div className={cn(
+                              'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors',
+                              selected ? 'border-primary' : 'border-muted-foreground/40'
+                            )}>
+                              {selected && <div className="h-2 w-2 rounded-full bg-primary" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium leading-none mb-1">{label}</p>
+                              <p className="text-[11px] text-muted-foreground leading-snug">{description}</p>
+                            </div>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">The user will receive an email with a temporary password.</p>
@@ -242,8 +281,8 @@ export default function UsersPage() {
                       id="u-edit-name"
                       value={editForm.name}
                       onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Jane Smith"
-                      className="rounded-none h-8 text-sm w-full bg-background"
+                      placeholder="John Doe"
+                      className="rounded-none h-8 text-sm w-full"
                     />
                   </div>
                 </>
@@ -265,7 +304,7 @@ export default function UsersPage() {
                 size="sm"
                 disabled={saving}
                 onClick={backToList}
-                className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
               >
                 Cancel
               </Button>

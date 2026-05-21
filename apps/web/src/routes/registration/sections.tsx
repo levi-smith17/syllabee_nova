@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronLeft, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { useRelevantCourses } from '@/hooks/use-relevant-courses'
 import { Button } from '@/components/ui/button'
@@ -199,7 +199,7 @@ function SectionFields({ form, setForm, courses, terms, instructors, formats, co
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Section Code <span className="text-destructive">*</span></Label>
-        <Input value={form.sectionCode} onChange={e => handleCodeChange(e.target.value)} placeholder="001" className="h-8 text-sm rounded-none w-full bg-background" />
+        <Input value={form.sectionCode} onChange={e => handleCodeChange(e.target.value)} placeholder="001" className="h-8 text-sm rounded-none w-full" />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Format</Label>
@@ -211,15 +211,15 @@ function SectionFields({ form, setForm, courses, terms, instructors, formats, co
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Meeting Days</Label>
-        <Input value={form.meetingDays} onChange={e => setForm(f => ({ ...f, meetingDays: e.target.value }))} placeholder="MWF or TR" className="h-8 text-sm rounded-none w-full bg-background" />
+        <Input value={form.meetingDays} onChange={e => setForm(f => ({ ...f, meetingDays: e.target.value }))} placeholder="MWF or TR" className="h-8 text-sm rounded-none w-full" />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Meeting Time</Label>
-        <Input value={form.meetingTime} onChange={e => setForm(f => ({ ...f, meetingTime: e.target.value }))} placeholder="9:00–10:15 AM" className="h-8 text-sm rounded-none w-full bg-background" />
+        <Input value={form.meetingTime} onChange={e => setForm(f => ({ ...f, meetingTime: e.target.value }))} placeholder="9:00–10:15 AM" className="h-8 text-sm rounded-none w-full" />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Room Number</Label>
-        <Input value={form.roomNumber} onChange={e => setForm(f => ({ ...f, roomNumber: e.target.value }))} placeholder="B204" className="h-8 text-sm rounded-none w-full bg-background" />
+        <Input value={form.roomNumber} onChange={e => setForm(f => ({ ...f, roomNumber: e.target.value }))} placeholder="B204" className="h-8 text-sm rounded-none w-full" />
       </div>
     </div>
   )
@@ -245,6 +245,7 @@ export default function SectionsPage() {
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all')
   const [termFilter, setTermFilter] = React.useState<Set<string>>(new Set())
+  const [courseFilter, setCourseFilter] = React.useState<Set<string>>(new Set())
   const [page, setPage] = React.useState(1)
 
   const { data: sections = [], isLoading } = useQuery<Section[]>({
@@ -289,12 +290,22 @@ export default function SectionsPage() {
     return Array.from(seen.values()).sort((a, b) => b.startDate.localeCompare(a.startDate))
   }, [sections, termMap])
 
+  const courseOptions = React.useMemo(() => {
+    const seen = new Map<string, { id: string; label: string }>()
+    for (const s of sections) {
+      const c = courseMap[s.courseId]
+      if (c && !seen.has(s.courseId)) seen.set(s.courseId, { id: s.courseId, label: `${c.code} — ${c.title}` })
+    }
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [sections, courseMap])
+
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
     return sections
       .filter(s => {
         const termIsActive = termMap[s.termId]?.isActive ?? true
         if (termFilter.size > 0 && !termFilter.has(s.termId)) return false
+        if (courseFilter.size > 0 && !courseFilter.has(s.courseId)) return false
         if (statusFilter === 'active' && (!s.isActive || !termIsActive)) return false
         if (statusFilter === 'inactive' && (s.isActive && termIsActive)) return false
         if (q) {
@@ -313,7 +324,7 @@ export default function SectionsPage() {
         const cb = courseMap[b.courseId]?.code ?? ''
         return ca.localeCompare(cb) || a.sectionCode.localeCompare(b.sectionCode)
       })
-  }, [sections, search, termFilter, statusFilter, courseMap, termMap])
+  }, [sections, search, termFilter, courseFilter, statusFilter, courseMap, termMap])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -465,7 +476,7 @@ export default function SectionsPage() {
               variant="ghost"
               disabled={saving}
               onClick={backToList}
-              className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+              className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
             >
               Cancel
             </Button>
@@ -505,6 +516,15 @@ export default function SectionsPage() {
                 onClear={() => { setTermFilter(new Set()); setPage(1) }}
               />
             )}
+            {courseOptions.length > 0 && (
+              <FilterDropdown
+                label="Course"
+                options={courseOptions}
+                selected={courseFilter}
+                onToggle={id => { setCourseFilter(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next }); setPage(1) }}
+                onClear={() => { setCourseFilter(new Set()); setPage(1) }}
+              />
+            )}
           </div>
 
           {/* ── Pagination row ────────────────────────────────────── */}
@@ -513,17 +533,17 @@ export default function SectionsPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                ‹ Prev
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
               </button>
               <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                Next ›
+                Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           )}

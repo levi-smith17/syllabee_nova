@@ -2,12 +2,13 @@ import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Check, ChevronLeft, Loader2, Pencil, Plus, Trash2, UserLock, X } from 'lucide-react'
+import { ChevronLeft, Loader2, Pencil, Plus, Trash2, UserLock, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/ui/icon-picker'
+import { Switch } from '@/components/ui/switch'
 import { DynamicIcon } from '@/components/dynamic-icon'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -180,7 +181,7 @@ export default function QuickLinksPage() {
                   onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
                   placeholder="Student Portal"
                   required
-                  className="rounded-none h-8 text-sm w-full bg-background"
+                  className="rounded-none h-8 text-sm w-full"
                 />
               </div>
               <div className="space-y-1.5">
@@ -192,28 +193,21 @@ export default function QuickLinksPage() {
                   onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
                   placeholder="https://…"
                   required
-                  className="rounded-none h-8 text-sm w-full bg-background"
+                  className="rounded-none h-8 text-sm w-full"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Icon</Label>
                 <IconPicker value={form.icon} onChange={name => setForm(f => ({ ...f, icon: name }))} />
               </div>
-              <label className="flex items-center gap-2.5 text-xs cursor-pointer select-none">
-                <span className={cn(
-                  'relative flex h-5 w-5 shrink-0 items-center justify-center border border-background bg-background transition-colors shadow-sm',
-                  form.restricted ? 'border-ring' : ''
-                )}>
-                  <input
-                    type="checkbox"
-                    checked={form.restricted}
-                    onChange={e => setForm(f => ({ ...f, restricted: e.target.checked }))}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  />
-                  {form.restricted && <Check className="h-3.5 w-3.5 text-ring stroke-[3]" />}
-                </span>
-                Restricted — visible to instructors and admins only
-              </label>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="restricted"
+                  checked={form.restricted}
+                  onCheckedChange={v => setForm(f => ({ ...f, restricted: v }))}
+                />
+                <Label htmlFor="restricted" className="text-xs cursor-pointer">Restricted — visible to instructors and admins only</Label>
+              </div>
             </div>
             <div className="px-4 py-3 space-y-2">
               <Button
@@ -231,7 +225,7 @@ export default function QuickLinksPage() {
                 size="sm"
                 disabled={saving}
                 onClick={backToList}
-                className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
               >
                 Cancel
               </Button>

@@ -2,19 +2,19 @@ locals {
   lambdas_editor = {
     "editor-block-create" = {
       policy_arn = var.dynamodb_write_policy_arn
-      route_key  = "POST /editor/syllabi/{id}/segments/{segment_id}/blocks"
+      route_key  = "POST /editor/syllabi/{id}/segments/{segmentId}/blocks"
     }
     "editor-block-delete" = {
       policy_arn = var.dynamodb_delete_policy_arn
-      route_key  = "DELETE /editor/syllabi/{id}/segments/{segment_id}/blocks/{block_id}"
+      route_key  = "DELETE /editor/syllabi/{id}/segments/{segmentId}/blocks/{blockId}"
     }
     "editor-block-reorder" = {
       policy_arn = var.dynamodb_write_policy_arn
-      route_key  = "POST /editor/syllabi/{id}/segments/{segment_id}/blocks/reorder"
+      route_key  = "POST /editor/syllabi/{id}/segments/{segmentId}/blocks/reorder"
     }
     "editor-block-update" = {
       policy_arn = var.dynamodb_write_policy_arn
-      route_key  = "PUT /editor/syllabi/{id}/segments/{segment_id}/blocks/{block_id}"
+      route_key  = "PUT /editor/syllabi/{id}/segments/{segmentId}/blocks/{blockId}"
     }
     "editor-grading-scale-create" = {
       policy_arn = var.dynamodb_write_policy_arn
@@ -38,7 +38,7 @@ locals {
     }
     "editor-segment-delete" = {
       policy_arn = var.dynamodb_delete_policy_arn
-      route_key  = "DELETE /editor/syllabi/{id}/segments/{segment_id}"
+      route_key  = "DELETE /editor/syllabi/{id}/segments/{segmentId}"
     }
     "editor-segment-reorder" = {
       policy_arn = var.dynamodb_write_policy_arn
@@ -46,7 +46,7 @@ locals {
     }
     "editor-segment-update" = {
       policy_arn = var.dynamodb_write_policy_arn
-      route_key  = "PUT /editor/syllabi/{id}/segments/{segment_id}"
+      route_key  = "PUT /editor/syllabi/{id}/segments/{segmentId}"
     }
     "editor-syllabi-list" = {
       policy_arn = var.dynamodb_read_policy_arn

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronLeft, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -283,23 +283,23 @@ export default function TermsPage() {
             <div className="p-4 space-y-4 border-b border-muted-foreground/25">
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs">Name</Label>
-                <Input id="name" value={form.name} onChange={field('name')} placeholder="Fall 2025" className="rounded-none h-8 text-sm w-full bg-background" required />
+                <Input id="name" value={form.name} onChange={field('name')} placeholder="Fall 2025" className="rounded-none h-8 text-sm w-full" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="code" className="text-xs">Code</Label>
-                <Input id="code" value={form.code} onChange={field('code')} placeholder="2025FS" className="uppercase rounded-none h-8 text-sm w-full bg-background" required />
+                <Input id="code" value={form.code} onChange={field('code')} placeholder="2025FS" className="uppercase rounded-none h-8 text-sm w-full" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="startDate" className="text-xs">Start Date</Label>
-                <Input id="startDate" type="date" value={form.startDate} onChange={field('startDate')} className="rounded-none h-8 text-sm w-full bg-background" required />
+                <Input id="startDate" type="date" value={form.startDate} onChange={field('startDate')} className="rounded-none h-8 text-sm w-full" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="endDate" className="text-xs">End Date</Label>
-                <Input id="endDate" type="date" value={form.endDate} onChange={field('endDate')} className="rounded-none h-8 text-sm w-full bg-background" required />
+                <Input id="endDate" type="date" value={form.endDate} onChange={field('endDate')} className="rounded-none h-8 text-sm w-full" required />
               </div>
               {termLengths.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Term Length <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs">Term Length</Label>
                   <Combobox
                     options={termLengths.map(tl => ({ id: tl.id, label: `${tl.label} (${tl.weeks} weeks)` }))}
                     value={form.termLengthId}
@@ -326,7 +326,7 @@ export default function TermsPage() {
                 size="sm"
                 disabled={saving}
                 onClick={backToList}
-                className="w-full rounded-none h-9 bg-muted-foreground/25 hover:bg-muted-foreground/35 text-foreground"
+                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
               >
                 Cancel
               </Button>
@@ -366,17 +366,17 @@ export default function TermsPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                ‹ Prev
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
               </button>
               <span className="text-xs text-muted-foreground">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-sm text-xs px-2 py-1.5 disabled:opacity-40 disabled:pointer-events-none hover:text-yellow-600 hover:bg-yellow-400/15 transition-colors"
               >
-                Next ›
+                Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
