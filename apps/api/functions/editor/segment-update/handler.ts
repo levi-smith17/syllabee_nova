@@ -4,7 +4,7 @@ import { dynamo, TABLE_NAME } from '../../shared/db'
 import { getUserId, isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, ok, badRequest, forbidden, notFound, conflict, serverError } from '../../shared/response'
 
-const UPDATABLE_FIELDS = ['name', 'description', 'printHeading', 'printingOptional', 'isVisible'] as const
+const UPDATABLE_FIELDS = ['name', 'description', 'printHeading', 'printingOptional', 'isVisible', 'sections'] as const
 
 export const handler = async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer

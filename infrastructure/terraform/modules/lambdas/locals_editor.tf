@@ -1,5 +1,9 @@
 locals {
   lambdas_editor = {
+    "editor-block-copy" = {
+      policy_arn = var.dynamodb_write_policy_arn
+      route_key  = "POST /editor/syllabi/{id}/segments/{segmentId}/blocks/copy"
+    }
     "editor-block-create" = {
       policy_arn = var.dynamodb_write_policy_arn
       route_key  = "POST /editor/syllabi/{id}/segments/{segmentId}/blocks"
@@ -31,6 +35,10 @@ locals {
     "editor-grading-scales-list" = {
       policy_arn = var.dynamodb_read_policy_arn
       route_key  = "GET /editor/grading-scales"
+    }
+    "editor-segment-copy" = {
+      policy_arn = var.dynamodb_write_policy_arn
+      route_key  = "POST /editor/syllabi/{id}/segments/copy"
     }
     "editor-segment-create" = {
       policy_arn = var.dynamodb_write_policy_arn

@@ -4,7 +4,6 @@ import { apiFetch } from '@/lib/api/client'
 import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
 import EditorPage from '@/routes/editor/index'
-import EditorDetailPage from '@/routes/editor/detail'
 import InternshipPage from '@/routes/internship/index'
 import InternshipDetailPage from '@/routes/internship/detail'
 import AdminIndex from '@/routes/admin/index'
@@ -51,33 +50,26 @@ export default function PlatformLayout() {
           restrictedQuickLinks={quickLinks?.restricted ?? []}
         />
         <main className="flex-1 overflow-hidden relative">
-          {isPanel ? (
+          {/* Always-mounted background — same component tree regardless of panel state so
+              pages like the editor never remount and lose their column/selection state. */}
+          <div className="absolute inset-0 z-0">
+            <Routes location={backgroundLocation ?? location}>
+              <Route path="/editor" element={<EditorPage />} />
+              <Route path="/editor/:id" element={<EditorPage />} />
+              <Route path="/internship" element={<InternshipPage />} />
+              <Route path="/internship/:id" element={<InternshipDetailPage />} />
+              <Route path="/admin" element={<AdminIndex />} />
+              <Route path="/admin/settings" element={<SettingsPage />} />
+            </Routes>
+          </div>
+
+          {isPanel && (
             <>
-              {/* Background page — rendered at the location that was active before opening the panel */}
-              <div className="absolute inset-0 z-0">
-                <Routes location={backgroundLocation ?? location}>
-                  <Route path="/editor" element={<EditorPage />} />
-                  <Route path="/editor/:id" element={<EditorDetailPage />} />
-                  <Route path="/internship" element={<InternshipPage />} />
-                  <Route path="/internship/:id" element={<InternshipDetailPage />} />
-                  <Route path="/admin" element={<AdminIndex />} />
-                  <Route path="/admin/users" element={<UsersPage />} />
-                  <Route path="/admin/quick-links" element={<QuickLinksPage />} />
-                  <Route path="/admin/settings" element={<SettingsPage />} />
-                </Routes>
-              </div>
-              {/* Overlay */}
-              <div
-                className="absolute inset-0 bg-black/60 z-10"
-                onClick={closePanel}
-              />
-              {/* Panel */}
+              <div className="absolute inset-0 bg-black/60 z-10" onClick={closePanel} />
               <div className="absolute top-0 left-0 h-full w-full md:w-96 bg-background z-20 shadow-xl border-r overflow-hidden">
                 <Outlet />
               </div>
             </>
-          ) : (
-            <Outlet />
           )}
         </main>
       </div>

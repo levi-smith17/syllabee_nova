@@ -123,11 +123,21 @@ export interface SyllabusSegment {
   syllabusId: string
   name: string
   description?: string
-  printHeading: boolean
+  printHeading: number
   printingOptional: boolean
   isVisible: boolean
   sortOrder: number
   effectiveTerm?: string
+  sections?: string[]
+}
+
+export interface EditorSection {
+  id: string
+  courseId: string
+  termId: string
+  sectionCode: string
+  meetingDays?: string | null
+  meetingTime?: string | null
 }
 
 export interface SyllabusBlock {
@@ -138,7 +148,7 @@ export interface SyllabusBlock {
   name: string
   isVisible: boolean
   sortOrder: number
-  printHeading: boolean
+  printHeading: number
   content: Record<string, unknown>
   published: boolean
   permalink?: string

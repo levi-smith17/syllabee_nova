@@ -57,6 +57,24 @@ describe('editor/segment-update', () => {
         expect(updateArg.input.Key).toEqual({ pk: 'SYLLABUS#s1', sk: 'SEG#seg1' })
     })
 
+    it('updates sections field', async () => {
+        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
+        mockSend.mockResolvedValueOnce({})
+        const result = await handler(makeEvent('s1', 'seg1', { sections: ['sec-1', 'sec-2'] })) as any
+        expect(result.statusCode).toBe(200)
+        const updateArg = mockSend.mock.calls[1][0]
+        expect(updateArg.input.ExpressionAttributeValues[':sections']).toEqual(['sec-1', 'sec-2'])
+    })
+
+    it('updates sections to empty array (removes all)', async () => {
+        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
+        mockSend.mockResolvedValueOnce({})
+        const result = await handler(makeEvent('s1', 'seg1', { sections: [] })) as any
+        expect(result.statusCode).toBe(200)
+        const updateArg = mockSend.mock.calls[1][0]
+        expect(updateArg.input.ExpressionAttributeValues[':sections']).toEqual([])
+    })
+
     it('returns 500 on DynamoDB error', async () => {
         mockSend.mockRejectedValueOnce(new Error('DDB error'))
         const result = await handler(makeEvent('s1', 'seg1', { name: 'x' })) as any

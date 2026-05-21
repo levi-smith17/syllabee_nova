@@ -71,6 +71,36 @@ describe('editor/segment-create', () => {
         expect(putArg.input.Item.sortOrder).toBe(3)
     })
 
+    it('defaults isVisible to false', async () => {
+        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
+        mockSend.mockResolvedValueOnce({ Items: [] })
+        mockSend.mockResolvedValueOnce({})
+
+        await handler(makeEvent('s1', { name: 'Policies' }))
+        const putArg = mockSend.mock.calls[2][0]
+        expect(putArg.input.Item.isVisible).toBe(false)
+    })
+
+    it('stores sections when provided', async () => {
+        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
+        mockSend.mockResolvedValueOnce({ Items: [] })
+        mockSend.mockResolvedValueOnce({})
+
+        await handler(makeEvent('s1', { name: 'Policies', sections: ['sec-1', 'sec-2'] }))
+        const putArg = mockSend.mock.calls[2][0]
+        expect(putArg.input.Item.sections).toEqual(['sec-1', 'sec-2'])
+    })
+
+    it('stores empty sections array when not provided', async () => {
+        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
+        mockSend.mockResolvedValueOnce({ Items: [] })
+        mockSend.mockResolvedValueOnce({})
+
+        await handler(makeEvent('s1', { name: 'Policies' }))
+        const putArg = mockSend.mock.calls[2][0]
+        expect(putArg.input.Item.sections).toEqual([])
+    })
+
     it('returns 500 on DynamoDB error', async () => {
         mockSend.mockRejectedValueOnce(new Error('DDB error'))
         const result = await handler(makeEvent('s1', { name: 'Policies' })) as any

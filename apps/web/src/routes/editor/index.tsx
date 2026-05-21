@@ -1,361 +1,440 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Search, ChevronRight, BookOpen, Lock, ChevronDown, X } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-import type { MasterSyllabus } from '@syllabee/types'
+import type { MasterSyllabus, SyllabusDetail, GradingScale, BlockType, EditorSection } from '@syllabee/types'
+import type { Col1Mode, Col2Mode, Col3Mode } from './shared'
+import { SyllabusColumn } from './syllabi'
+import { SegmentColumn } from './segments'
+import { BlockColumn } from './blocks'
 
-interface Term { id: string; name: string; code: string; isActive?: boolean }
-
-type Mode = 'list' | 'add'
-
-const EMPTY_FORM = {
-    termCode: '',
-    interactiveView: false,
+function useIsMobile() {
+    const [isMobile, setIsMobile] = React.useState(() => window.matchMedia('(max-width: 767px)').matches)
+    React.useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px)')
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+        mq.addEventListener('change', handler)
+        return () => mq.removeEventListener('change', handler)
+    }, [])
+    return isMobile
 }
 
 export default function EditorPage() {
+    const { id } = useParams<{ id?: string }>()
     const navigate = useNavigate()
     const qc = useQueryClient()
-    const [mode, setMode] = React.useState<Mode>('list')
-    const [search, setSearch] = React.useState('')
-    const [form, setForm] = React.useState(EMPTY_FORM)
+    const isMobile = useIsMobile()
 
-    // Combobox state
-    const [termSearch, setTermSearch] = React.useState('')
-    const [termMenuOpen, setTermMenuOpen] = React.useState(false)
-    const termInputRef = React.useRef<HTMLInputElement>(null)
-    const termMenuRef = React.useRef<HTMLDivElement>(null)
+    // ── Column modes ──────────────────────────────────────────────────────────
+    const [col1Mode, setCol1Mode] = React.useState<Col1Mode>('list')
+    const [col2Mode, setCol2Mode] = React.useState<Col2Mode>('hidden')
+    const [col3Mode, setCol3Mode] = React.useState<Col3Mode>('blocks')
 
-    const { data: syllabi = [], isLoading } = useQuery({
+    // ── Selection state ───────────────────────────────────────────────────────
+    const [editingSegmentId, setEditingSegmentId] = React.useState<string | null>(null)
+    const [selectedSegmentId, setSelectedSegmentId] = React.useState<string | null>(null)
+    const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null)
+    const [newBlockType, setNewBlockType] = React.useState<BlockType | null>(null)
+    const [editingSyllabusId, setEditingSyllabusId] = React.useState<string | null>(null)
+
+    // Track id changes (no remount when navigating between syllabi)
+    const prevIdRef = React.useRef<string | undefined>(id)
+
+    React.useEffect(() => {
+        if (prevIdRef.current === id) return
+        prevIdRef.current = id
+        setCol1Mode('list')
+        setEditingSyllabusId(null)
+        // Close col2 only if we navigated away from all syllabi; otherwise reset
+        // to the list view (keeps col2 open if user was browsing segments)
+        setCol2Mode(prev => {
+            if (!id) return 'hidden'
+            return prev === 'hidden' ? 'hidden' : 'segmentList'
+        })
+        setEditingSegmentId(null)
+        setSelectedSegmentId(null)
+        setSelectedBlockId(null)
+        setCol3Mode('blocks')
+        setNewBlockType(null)
+    }, [id])
+
+    // ── Queries ───────────────────────────────────────────────────────────────
+
+    const { data: syllabi = [], isLoading: syllabiLoading } = useQuery({
         queryKey: ['syllabi'],
         queryFn: () => apiFetch<{ data: MasterSyllabus[] }>('/editor/syllabi').then(r => r.data ?? []),
     })
 
-    const { data: terms = [] } = useQuery<Term[]>({
+    const { data: terms = [] } = useQuery({
         queryKey: ['terms'],
-        queryFn: () => apiFetch<{ data: Term[] }>('/registration/terms').then(r => r.data ?? []),
+        queryFn: () => apiFetch<{ data: { id: string; name: string; code: string; isActive?: boolean }[] }>('/registration/terms').then(r => r.data ?? []),
     })
 
-    // Descending by term code
-    const sortedTerms = React.useMemo(
-        () => [...terms].filter(t => t.isActive !== false).sort((a, b) => b.code.localeCompare(a.code)),
-        [terms]
-    )
+    const { data: syllabusData, isLoading: detailLoading } = useQuery({
+        queryKey: ['syllabus', id],
+        queryFn: () => apiFetch<{ data: SyllabusDetail }>(`/editor/syllabi/${id}`).then(r => r.data),
+        enabled: !!id,
+    })
 
-    const filteredTerms = React.useMemo(() => {
-        const q = termSearch.toLowerCase()
-        if (!q) return sortedTerms
-        return sortedTerms.filter(t =>
-            t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)
-        )
-    }, [sortedTerms, termSearch])
+    const { data: gradingScales = [] } = useQuery({
+        queryKey: ['grading-scales'],
+        queryFn: () => apiFetch<{ data: GradingScale[] }>('/editor/grading-scales').then(r => r.data ?? []),
+        enabled: !!id,
+    })
 
-    const selectedTerm = terms.find(t => t.code === form.termCode) ?? null
+    const { data: allSections = [] } = useQuery({
+        queryKey: ['sections'],
+        queryFn: () => apiFetch<{ data: EditorSection[] }>('/editor/sections').then(r => r.data ?? []),
+        staleTime: 1000 * 60 * 30,
+    })
 
-    // Close menu on outside click
-    React.useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            if (
-                termInputRef.current && !termInputRef.current.contains(e.target as Node) &&
-                termMenuRef.current && !termMenuRef.current.contains(e.target as Node)
-            ) {
-                setTermMenuOpen(false)
-                // If no term is selected, clear the search text
-                if (!form.termCode) setTermSearch('')
-            }
-        }
-        document.addEventListener('mousedown', handleClick)
-        return () => document.removeEventListener('mousedown', handleClick)
-    }, [form.termCode])
+    const syllabus = syllabusData?.syllabus
+    const segments = syllabusData?.segments ?? []
+    const locked = syllabus?.locked ?? false
+    const selectedSegment = segments.find(s => s.id === selectedSegmentId)
 
-    const createMutation = useMutation({
-        mutationFn: (body: { termCode: string; interactiveView: boolean; title: string }) =>
-            apiFetch<{ data: { id: string } }>('/editor/syllabi', {
-                method: 'POST',
-                body: JSON.stringify(body),
-            }),
-        onSuccess: (res) => {
-            qc.invalidateQueries({ queryKey: ['syllabi'] })
+    const editingSyllabus = syllabi.find(s => s.id === editingSyllabusId)
+    const editingLocked = editingSyllabus?.locked ?? false
+
+    function invalidate() { void qc.invalidateQueries({ queryKey: ['syllabus', id] }) }
+
+    // ── Mutations: Syllabi ────────────────────────────────────────────────────
+
+    const createSyllabusMutation = useMutation({
+        mutationFn: (body: Record<string, unknown>) =>
+            apiFetch<{ data: { id: string } }>('/editor/syllabi', { method: 'POST', body: JSON.stringify(body) }),
+        onSuccess: res => {
+            void qc.invalidateQueries({ queryKey: ['syllabi'] })
             toast.success('Syllabus created')
-            setMode('list')
-            setForm(EMPTY_FORM)
-            setTermSearch('')
             navigate(`/editor/${res.data.id}`)
+            setCol2Mode('segmentList')
         },
         onError: () => toast.error('Failed to create syllabus'),
     })
 
-    const filtered = React.useMemo(() => {
-        const q = search.toLowerCase()
-        if (!q) return syllabi
-        return syllabi.filter(s =>
-            s.title.toLowerCase().includes(q) ||
-            (s.termCode ?? '').toLowerCase().includes(q)
-        )
-    }, [syllabi, search])
+    const updateSyllabusMutation = useMutation({
+        mutationFn: ({ syllabusId, body }: { syllabusId: string; body: Record<string, unknown> }) =>
+            apiFetch(`/editor/syllabi/${syllabusId}`, { method: 'PUT', body: JSON.stringify(body) }),
+        onSuccess: (_, { syllabusId }) => {
+            void qc.invalidateQueries({ queryKey: ['syllabus', syllabusId] })
+            void qc.invalidateQueries({ queryKey: ['syllabi'] })
+            toast.success('Syllabus saved')
+            setEditingSyllabusId(null)
+            setCol1Mode('list')
+        },
+        onError: () => toast.error('Failed to save syllabus'),
+    })
 
-    function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
-        if (!form.termCode || !selectedTerm) {
-            toast.error('Term is required')
-            return
+    const deleteSyllabusMutation = useMutation({
+        mutationFn: (syllabusId: string) => apiFetch(`/editor/syllabi/${syllabusId}`, { method: 'DELETE' }),
+        onSuccess: (_, syllabusId) => {
+            void qc.invalidateQueries({ queryKey: ['syllabi'] })
+            toast.success('Syllabus deleted')
+            if (syllabusId === id) navigate('/editor')
+        },
+        onError: () => toast.error('Failed to delete'),
+    })
+
+    const lockMutation = useMutation({
+        mutationFn: ({ syllabusId, locked: l }: { syllabusId: string; locked: boolean }) =>
+            apiFetch(`/editor/syllabi/${syllabusId}/lock`, { method: 'POST', body: JSON.stringify({ locked: l }) }),
+        onSuccess: (_, { syllabusId, locked: l }) => {
+            void qc.invalidateQueries({ queryKey: ['syllabi'] })
+            void qc.invalidateQueries({ queryKey: ['syllabus', syllabusId] })
+            toast.success(l ? 'Locked' : 'Unlocked')
+        },
+        onError: () => toast.error('Failed to update lock'),
+    })
+
+    // ── Mutations: Segments ───────────────────────────────────────────────────
+
+    const addSegmentMutation = useMutation({
+        mutationFn: (body: Record<string, unknown>) =>
+            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments`, { method: 'POST', body: JSON.stringify(body) }),
+        onSuccess: res => {
+            invalidate()
+            toast.success('Segment added')
+            setCol2Mode('segmentList')
+            setSelectedSegmentId(res.data.id)
+            setCol3Mode('blocks')
+        },
+        onError: () => toast.error('Failed to add segment'),
+    })
+
+    const updateSegmentMutation = useMutation({
+        mutationFn: ({ segId, body }: { segId: string; body: Record<string, unknown> }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}`, { method: 'PUT', body: JSON.stringify(body) }),
+        onSuccess: () => { invalidate(); toast.success('Segment saved'); setCol2Mode('segmentList') },
+        onError: () => toast.error('Failed to save segment'),
+    })
+
+    const deleteSegmentMutation = useMutation({
+        mutationFn: (segId: string) => apiFetch(`/editor/syllabi/${id}/segments/${segId}`, { method: 'DELETE' }),
+        onSuccess: (_, segId) => {
+            invalidate()
+            toast.success('Segment deleted')
+            setCol2Mode('segmentList')
+            setEditingSegmentId(null)
+            if (selectedSegmentId === segId) {
+                setSelectedSegmentId(null)
+                setCol3Mode('blocks')
+            }
+        },
+        onError: () => toast.error('Failed to delete segment'),
+    })
+
+    const reorderSegmentsMutation = useMutation({
+        mutationFn: (orderedIds: string[]) =>
+            apiFetch(`/editor/syllabi/${id}/segments/reorder`, { method: 'POST', body: JSON.stringify({ orderedIds }) }),
+        onMutate: async (orderedIds) => {
+            await qc.cancelQueries({ queryKey: ['syllabus', id] })
+            const previous = qc.getQueryData<SyllabusDetail>(['syllabus', id])
+            qc.setQueryData<SyllabusDetail>(['syllabus', id], old => {
+                if (!old) return old
+                const byId = new Map(old.segments.map(s => [s.id, s]))
+                return { ...old, segments: orderedIds.map((sid, idx) => ({ ...byId.get(sid)!, sortOrder: idx })) }
+            })
+            return { previous }
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previous) qc.setQueryData(['syllabus', id], context.previous)
+            toast.error('Failed to reorder')
+        },
+        onSettled: () => void qc.invalidateQueries({ queryKey: ['syllabus', id] }),
+    })
+
+    // ── Mutations: Blocks ─────────────────────────────────────────────────────
+
+    const addBlockMutation = useMutation({
+        mutationFn: ({ segId, body }: { segId: string; body: Record<string, unknown> }) =>
+            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments/${segId}/blocks`, { method: 'POST', body: JSON.stringify(body) }),
+        onSuccess: res => {
+            invalidate()
+            toast.success('Block added')
+            setSelectedBlockId(res.data.id)
+            setNewBlockType(null)
+            setCol3Mode('editBlock')
+        },
+        onError: () => toast.error('Failed to add block'),
+    })
+
+    const updateBlockMutation = useMutation({
+        mutationFn: ({ segId, blockId, body }: { segId: string; blockId: string; body: Record<string, unknown> }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'PUT', body: JSON.stringify(body) }),
+        onSuccess: () => { invalidate(); toast.success('Block saved') },
+        onError: () => toast.error('Failed to save block'),
+    })
+
+    const deleteBlockMutation = useMutation({
+        mutationFn: ({ segId, blockId }: { segId: string; blockId: string }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'DELETE' }),
+        onSuccess: () => {
+            invalidate()
+            toast.success('Block deleted')
+            setSelectedBlockId(null)
+            setCol3Mode('blocks')
+        },
+        onError: () => toast.error('Failed to delete block'),
+    })
+
+    const copySegmentMutation = useMutation({
+        mutationFn: ({ sourceSyllabusId, sourceSegmentId, sections }: {
+            sourceSyllabusId: string; sourceSegmentId: string; sections: string[]
+        }) =>
+            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments/copy`, {
+                method: 'POST',
+                body: JSON.stringify({ sourceSyllabusId, sourceSegmentId, sections }),
+            }),
+        onSuccess: res => {
+            invalidate()
+            void qc.invalidateQueries({ queryKey: ['syllabi'] })
+            toast.success('Segment copied')
+            setSelectedSegmentId(res.data.id)
+            setCol3Mode('blocks')
+        },
+        onError: () => toast.error('Failed to copy segment'),
+    })
+
+    const copyBlockMutation = useMutation({
+        mutationFn: ({ segId, sourceSyllabusId, sourceSegmentId, sourceBlockId }: {
+            segId: string; sourceSyllabusId: string; sourceSegmentId: string; sourceBlockId: string
+        }) =>
+            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments/${segId}/blocks/copy`, {
+                method: 'POST',
+                body: JSON.stringify({ sourceSyllabusId, sourceSegmentId, sourceBlockId }),
+            }),
+        onSuccess: res => {
+            invalidate()
+            toast.success('Block copied')
+            setSelectedBlockId(res.data.id)
+            setCol3Mode('editBlock')
+        },
+        onError: () => toast.error('Failed to copy block'),
+    })
+
+    const reorderBlocksMutation = useMutation({
+        mutationFn: ({ segId, orderedIds }: { segId: string; orderedIds: string[] }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/reorder`, { method: 'POST', body: JSON.stringify({ orderedIds }) }),
+        onMutate: async ({ segId, orderedIds }) => {
+            await qc.cancelQueries({ queryKey: ['syllabus', id] })
+            const previous = qc.getQueryData<SyllabusDetail>(['syllabus', id])
+            qc.setQueryData<SyllabusDetail>(['syllabus', id], old => {
+                if (!old) return old
+                return {
+                    ...old,
+                    segments: old.segments.map(seg => {
+                        if (seg.id !== segId) return seg
+                        const byId = new Map(seg.blocks.map(b => [b.id, b]))
+                        return { ...seg, blocks: orderedIds.map((bid, idx) => ({ ...byId.get(bid)!, sortOrder: idx })) }
+                    }),
+                }
+            })
+            return { previous }
+        },
+        onError: (_err, _vars, context) => {
+            if (context?.previous) qc.setQueryData(['syllabus', id], context.previous)
+            toast.error('Failed to reorder')
+        },
+        onSettled: () => void qc.invalidateQueries({ queryKey: ['syllabus', id] }),
+    })
+
+    // ── Handlers ──────────────────────────────────────────────────────────────
+
+    function handleSelectSyllabus(newId: string) {
+        if (newId === id) {
+            if (isMobile) {
+                // On mobile, clicking same syllabus always shows segments
+                setCol2Mode('segmentList')
+                setSelectedSegmentId(null)
+                setSelectedBlockId(null)
+                setCol3Mode('blocks')
+            } else if (col2Mode !== 'hidden') {
+                // Desktop: deselect entirely — navigate clears URL, useEffect resets state
+                navigate('/editor')
+            } else {
+                setCol2Mode('segmentList')
+            }
+        } else {
+            setCol2Mode('segmentList')
+            navigate(`/editor/${newId}`)
         }
-        createMutation.mutate({
-            termCode: form.termCode,
-            interactiveView: form.interactiveView,
-            title: selectedTerm.name,
-        })
     }
 
-    function resetForm() {
-        setMode('list')
-        setForm(EMPTY_FORM)
-        setTermSearch('')
-        setTermMenuOpen(false)
+    function handleEditSyllabus(syllabusId: string) {
+        setEditingSyllabusId(syllabusId)
+        setCol1Mode('edit')
     }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    const showCol2 = col2Mode !== 'hidden'
+    const showCol3 = showCol2 && !!selectedSegmentId && !!selectedSegment
+    const mobileActiveCol = showCol3 ? 'col3' : showCol2 ? 'col2' : 'col1'
 
     return (
-        <div className="h-full overflow-y-auto">
-            {/* Header */}
-            <div className="bg-primary text-primary-foreground px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5" />
-                    <h1 className="text-lg font-semibold">
-                        {mode === 'add' ? 'New Syllabus' : 'Syllabi'}
-                    </h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    {mode === 'list' ? (
-                        <Button size="sm" variant="secondary" onClick={() => setMode('add')}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            New Syllabus
-                        </Button>
-                    ) : (
-                        <Button size="sm" variant="secondary" onClick={resetForm}>
-                            Cancel
-                        </Button>
-                    )}
-                </div>
-            </div>
+        <div className="flex h-full overflow-hidden">
 
-            {mode === 'add' ? (
-                <form onSubmit={handleSubmit} className="p-6 space-y-5 max-w-lg">
+            {(!isMobile || mobileActiveCol === 'col1') && <SyllabusColumn
+                syllabi={syllabi}
+                syllabiLoading={syllabiLoading}
+                selectedId={id}
+                col1Mode={col1Mode}
+                setCol1Mode={m => { if (m === 'list') setEditingSyllabusId(null); setCol1Mode(m) }}
+                terms={terms}
+                syllabus={editingSyllabus}
+                locked={editingLocked}
+                onSelectSyllabus={handleSelectSyllabus}
+                onEditSyllabus={handleEditSyllabus}
+                onCreateSyllabus={body => createSyllabusMutation.mutate(body)}
+                onUpdateSyllabus={body => updateSyllabusMutation.mutate({ syllabusId: editingSyllabusId!, body })}
+                onDeleteSyllabus={syllabusId => deleteSyllabusMutation.mutate(syllabusId)}
+                onToggleLock={syllabusId => {
+                    const syl = syllabi.find(s => s.id === syllabusId)
+                    if (syl) lockMutation.mutate({ syllabusId, locked: !syl.locked })
+                }}
+                isCreating={createSyllabusMutation.isPending}
+                isUpdating={updateSyllabusMutation.isPending}
+            />}
 
-                    {/* ── Term combobox ── */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="term-input">Term</Label>
-                        <div className="relative">
-                            <div className="relative flex items-center border border-input bg-background shadow-sm focus-within:ring-1 focus-within:ring-ring">
-                                <input
-                                    id="term-input"
-                                    ref={termInputRef}
-                                    value={termSearch}
-                                    placeholder="Search terms…"
-                                    autoComplete="off"
-                                    className="flex-1 h-9 px-3 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-                                    onChange={e => {
-                                        setTermSearch(e.target.value)
-                                        setForm(f => ({ ...f, termCode: '' }))
-                                        setTermMenuOpen(true)
-                                    }}
-                                    onFocus={() => setTermMenuOpen(true)}
-                                />
-                                {termSearch ? (
-                                    <button
-                                        type="button"
-                                        className="px-2 text-muted-foreground hover:text-foreground"
-                                        onClick={() => {
-                                            setTermSearch('')
-                                            setForm(f => ({ ...f, termCode: '' }))
-                                            termInputRef.current?.focus()
-                                        }}
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="px-2 text-muted-foreground hover:text-foreground"
-                                        onMouseDown={e => {
-                                            e.preventDefault()
-                                            setTermMenuOpen(o => !o)
-                                            termInputRef.current?.focus()
-                                        }}
-                                    >
-                                        <ChevronDown className="h-4 w-4 shrink-0" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {termMenuOpen && (
-                                <div
-                                    ref={termMenuRef}
-                                    className="absolute z-50 top-full left-0 right-0 border border-input bg-popover shadow-md max-h-52 overflow-y-auto"
-                                >
-                                    {filteredTerms.length === 0 ? (
-                                        <p className="px-3 py-2 text-sm text-muted-foreground">No terms found.</p>
-                                    ) : filteredTerms.map(term => (
-                                        <button
-                                            key={term.id}
-                                            type="button"
-                                            className={cn(
-                                                'w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                                                form.termCode === term.code && 'bg-accent text-accent-foreground font-medium'
-                                            )}
-                                            onMouseDown={e => {
-                                                e.preventDefault()
-                                                setForm(f => ({ ...f, termCode: term.code }))
-                                                setTermSearch(term.name)
-                                                setTermMenuOpen(false)
-                                            }}
-                                        >
-                                            <span>{term.name}</span>
-                                            <span className="ml-2 text-xs text-muted-foreground">{term.code}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ── Syllabus type choice cards ── */}
-                    <div className="space-y-1.5">
-                        <Label>Student View</Label>
-                        <div className="flex flex-col gap-2">
-                            {([
-                                {
-                                    value: false,
-                                    label: 'Interactive Syllabus',
-                                    description: 'Students step through content sequentially, answer embedded quiz questions, and earn points. Supports LTI grade passback to the LMS.',
-                                },
-                                {
-                                    value: true,
-                                    label: 'Traditional Syllabus',
-                                    description: 'A static, navigable document. Students can read through sections at their own pace with no grading or time constraints.',
-                                },
-                            ] as const).map(({ value, label, description }) => {
-                                const selected = form.interactiveView === value
-                                return (
-                                    <label
-                                        key={String(value)}
-                                        className={cn(
-                                            'flex items-start gap-3 border p-3 cursor-pointer transition-colors',
-                                            selected
-                                                ? 'border-primary bg-primary/5'
-                                                : 'border-border hover:border-primary/50 hover:bg-muted/40'
-                                        )}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="syllabusType"
-                                            checked={selected}
-                                            onChange={() => setForm(f => ({ ...f, interactiveView: value }))}
-                                            className="sr-only"
-                                        />
-                                        <div className={cn(
-                                            'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors',
-                                            selected ? 'border-primary' : 'border-muted-foreground/40'
-                                        )}>
-                                            {selected && <div className="h-2 w-2 rounded-full bg-primary" />}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium leading-none mb-1">{label}</p>
-                                            <p className="text-xs text-muted-foreground leading-snug">{description}</p>
-                                        </div>
-                                    </label>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full rounded-none">
-                        {createMutation.isPending ? 'Creating…' : 'Create Syllabus'}
-                    </Button>
-                </form>
-            ) : (
-                <div className="p-6 space-y-4">
-                    <div className="relative max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            className="pl-8"
-                            placeholder="Search by title or term…"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
-                    </div>
-
-                    {isLoading ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>
-                    ) : filtered.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-8 text-center">
-                            {syllabi.length === 0
-                                ? 'No syllabi yet. Create one to get started.'
-                                : 'No results match your search.'}
-                        </p>
-                    ) : (
-                        <div className="rounded-md border overflow-hidden">
-                            <table className="w-full text-sm">
-                                <thead className="bg-muted text-muted-foreground">
-                                    <tr>
-                                        <th className="text-left px-4 py-2.5 font-medium">Title</th>
-                                        <th className="text-left px-4 py-2.5 font-medium">Term</th>
-                                        <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                                        <th className="text-left px-4 py-2.5 font-medium">Created</th>
-                                        <th className="px-4 py-2.5" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {filtered.map(syllabus => (
-                                        <tr
-                                            key={syllabus.id}
-                                            className="hover:bg-muted/50 cursor-pointer transition-colors"
-                                            onClick={() => navigate(`/editor/${syllabus.id}`)}
-                                        >
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium">{syllabus.title}</div>
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
-                                                {syllabus.termCode ?? '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1.5">
-                                                    {syllabus.locked && (
-                                                        <Badge variant="secondary" className="gap-1">
-                                                            <Lock className="h-3 w-3" />
-                                                            Locked
-                                                        </Badge>
-                                                    )}
-                                                    {syllabus.interactiveView && (
-                                                        <Badge variant="default">Interactive</Badge>
-                                                    )}
-                                                    {!syllabus.locked && !syllabus.interactiveView && (
-                                                        <Badge variant="outline">Draft</Badge>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-muted-foreground">
-                                                {syllabus.createdAt
-                                                    ? new Date(syllabus.createdAt).toLocaleDateString()
-                                                    : '—'}
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground inline" />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+            {showCol2 && (!isMobile || mobileActiveCol === 'col2') && (
+                <SegmentColumn
+                    syllabus={syllabus}
+                    segments={segments}
+                    detailLoading={detailLoading}
+                    locked={locked}
+                    col2Mode={col2Mode}
+                    setCol2Mode={setCol2Mode}
+                    editingSegmentId={editingSegmentId}
+                    setEditingSegmentId={setEditingSegmentId}
+                    selectedSegmentId={selectedSegmentId}
+                    onSelectSegment={segId => {
+                        if (segId === selectedSegmentId && !isMobile) {
+                            setSelectedSegmentId(null)
+                            setSelectedBlockId(null)
+                            setCol3Mode('blocks')
+                        } else {
+                            setSelectedSegmentId(segId)
+                            setSelectedBlockId(null)
+                            setCol3Mode('blocks')
+                        }
+                    }}
+                    onAddSegment={body => addSegmentMutation.mutate(body)}
+                    onUpdateSegment={(segId, body) => updateSegmentMutation.mutate({ segId, body })}
+                    onDeleteSegment={segId => deleteSegmentMutation.mutate(segId)}
+                    onReorderSegments={orderedIds => reorderSegmentsMutation.mutate(orderedIds)}
+                    onEditSettings={() => { setEditingSyllabusId(id ?? null); setCol1Mode('edit') }}
+                    isAdding={addSegmentMutation.isPending}
+                    isUpdating={updateSegmentMutation.isPending}
+                    syllabi={syllabi}
+                    allSections={allSections}
+                    onCopySegment={(sourceSyllabusId, sourceSegmentId, sections) =>
+                        copySegmentMutation.mutate({ sourceSyllabusId, sourceSegmentId, sections })
+                    }
+                    isCopyingSegment={copySegmentMutation.isPending}
+                    mobileBack={isMobile ? () => {
+                        setCol2Mode('hidden')
+                        setSelectedSegmentId(null)
+                        setSelectedBlockId(null)
+                        setCol3Mode('blocks')
+                    } : undefined}
+                />
             )}
+
+            {showCol3 && selectedSegment && (!isMobile || mobileActiveCol === 'col3') && (
+                <BlockColumn
+                    selectedSegment={selectedSegment}
+                    locked={locked}
+                    col3Mode={col3Mode}
+                    setCol3Mode={setCol3Mode}
+                    selectedBlockId={selectedBlockId}
+                    setSelectedBlockId={setSelectedBlockId}
+                    newBlockType={newBlockType}
+                    setNewBlockType={setNewBlockType}
+                    gradingScales={gradingScales}
+                    onAddBlock={(segId, body) => addBlockMutation.mutate({ segId, body })}
+                    onUpdateBlock={(segId, blockId, body) => updateBlockMutation.mutate({ segId, blockId, body })}
+                    onDeleteBlock={(segId, blockId) => deleteBlockMutation.mutate({ segId, blockId })}
+                    onToggleBlockVisible={(segId, blockId) => {
+                        const block = selectedSegment.blocks.find(b => b.id === blockId)
+                        if (block && !locked) updateBlockMutation.mutate({ segId, blockId, body: { isVisible: !block.isVisible } })
+                    }}
+                    onReorderBlocks={(segId, orderedIds) => reorderBlocksMutation.mutate({ segId, orderedIds })}
+                    isAdding={addBlockMutation.isPending}
+                    isUpdating={updateBlockMutation.isPending}
+                    syllabi={syllabi}
+                    onCopyBlock={(sourceSyllabusId, sourceSegmentId, sourceBlockId) =>
+                        copyBlockMutation.mutate({ segId: selectedSegmentId!, sourceSyllabusId, sourceSegmentId, sourceBlockId })
+                    }
+                    isCopyingBlock={copyBlockMutation.isPending}
+                    mobileBack={isMobile ? () => {
+                        setSelectedSegmentId(null)
+                        setSelectedBlockId(null)
+                        setCol3Mode('blocks')
+                    } : undefined}
+                />
+            )}
+
         </div>
     )
 }

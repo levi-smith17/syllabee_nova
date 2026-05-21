@@ -63,7 +63,7 @@ export const handler = async (
                 type,
                 name: String(name),
                 isVisible: isVisible ?? true,
-                printHeading: printHeading ?? false,
+                printHeading: printHeading ?? 3,
                 content: content ?? {},
                 published: false,
                 sortOrder: maxOrder + 1,

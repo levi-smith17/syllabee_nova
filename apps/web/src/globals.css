@@ -130,4 +130,22 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
   }
+
+  /* ── Sonner toast overrides ─────────────────────────────── */
+  [data-sonner-toast][data-type='success'] {
+    background: hsl(190 70% 95%) !important;
+    border-color: hsl(190 70% 72%) !important;
+    color: hsl(190 100% 18%) !important;
+  }
+  [data-sonner-toast][data-type='success'] [data-icon] svg {
+    color: hsl(190 100% 28%) !important;
+  }
+  .dark [data-sonner-toast][data-type='success'] {
+    background: hsl(190 40% 14%) !important;
+    border-color: hsl(185 60% 32%) !important;
+    color: hsl(185 96% 88%) !important;
+  }
+  .dark [data-sonner-toast][data-type='success'] [data-icon] svg {
+    color: hsl(185 96% 72%) !important;
+  }
 }

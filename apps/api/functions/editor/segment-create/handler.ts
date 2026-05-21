@@ -13,7 +13,7 @@ export const handler = async (
         if (!id) return toApiGatewayResponse(notFound('Syllabus not found'))
 
         const body = JSON.parse(event.body ?? '{}')
-        const { name, description, printHeading, printingOptional, isVisible } = body
+        const { name, description, printHeading, printingOptional, isVisible, sections } = body
         if (!name) return toApiGatewayResponse(badRequest('name is required'))
 
         const userId = getUserId(event)
@@ -46,9 +46,10 @@ export const handler = async (
                 id: segId,
                 name: String(name),
                 description: description ?? null,
-                printHeading: printHeading ?? false,
+                printHeading: printHeading ?? 2,
                 printingOptional: printingOptional ?? false,
-                isVisible: isVisible ?? true,
+                isVisible: isVisible ?? false,
+                sections: sections ?? [],
                 sortOrder: maxOrder + 1,
             },
         }))

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import {Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Trash2, X} from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,8 +31,8 @@ type Mode = 'list' | 'add' | 'edit'
 
 const statusChipClass = (active: boolean) =>
   cn(
-    'flex-1 py-1 text-xs font-medium transition-colors cursor-pointer border border-yellow-400 text-center',
-    active ? 'bg-yellow-400 text-yellow-900' : 'bg-transparent text-foreground hover:bg-yellow-400/10'
+    'flex-1 py-1 text-xs font-medium transition-colors cursor-pointer border border-primary text-center',
+    active ? 'bg-primary text-black' : 'bg-transparent text-foreground hover:bg-yellow-400/10'
   )
 
 // ── Combobox ───────────────────────────────────────────────────────────────────
@@ -253,13 +253,14 @@ export default function TermsPage() {
     <div className="flex flex-col h-full overflow-hidden">
 
       {/* ── Panel header ─────────────────────────────────────────── */}
-      <div className="shrink-0 bg-yellow-400 border-b border-yellow-500 px-4 py-3 flex items-center gap-2">
+      <div className="shrink-0 bg-primary border-b border-primary px-4 py-3 flex items-center gap-2">
         {isFormMode && (
-          <button onClick={backToList} className="p-1 rounded-sm text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
+          <button onClick={backToList} className="p-1 rounded-sm text-black hover:bg-black/10 hover:text-yellow-900 transition-colors">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
-        <h1 className="text-sm font-semibold text-yellow-900 flex-1 truncate">
+        <h1 className="text-sm font-semibold text-black flex-1 truncate flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
           {mode === 'add' ? 'Add Term' : mode === 'edit' ? 'Edit Term' : 'Terms'}
         </h1>
         {!isFormMode && (
@@ -271,7 +272,7 @@ export default function TermsPage() {
             <Plus className="h-3.5 w-3.5" /> Add
           </Button>
         )}
-        <button onClick={closePanel} className="p-1 rounded text-yellow-800 hover:bg-black/10 hover:text-yellow-900 transition-colors">
+        <button onClick={closePanel} className="p-1 rounded text-black hover:bg-black/10 hover:text-yellow-900 transition-colors">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -315,7 +316,7 @@ export default function TermsPage() {
                 type="submit"
                 size="sm"
                 disabled={saving || !canSubmit}
-                className="w-full rounded-none h-9 bg-yellow-400 text-yellow-900 border-yellow-400 hover:bg-yellow-500 hover:border-yellow-500"
+                className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80 hover:text-black transition-colors"
               >
                 {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                 {mode === 'add' ? 'Create Term' : 'Save Changes'}
@@ -326,7 +327,7 @@ export default function TermsPage() {
                 size="sm"
                 disabled={saving}
                 onClick={backToList}
-                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground"
+                className="w-full rounded-none h-9 bg-muted-foreground/15 hover:bg-muted-foreground/25 text-foreground transition-colors"
               >
                 Cancel
               </Button>

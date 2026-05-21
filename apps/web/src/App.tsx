@@ -10,10 +10,8 @@ import ForgotPasswordPage from '@/routes/auth/forgot-password'
 // Platform
 import PlatformLayout from '@/routes/platform-layout'
 import EditorPage from '@/routes/editor/index'
-import EditorDetailPage from '@/routes/editor/detail'
 import InternshipPage from '@/routes/internship/index'
 import InternshipDetailPage from '@/routes/internship/detail'
-import AdminIndex from '@/routes/admin/index'
 import CoursesPage from '@/routes/registration/courses'
 import TermsPage from '@/routes/registration/terms'
 import SectionsPage from '@/routes/registration/sections'
@@ -43,10 +41,9 @@ export default function App() {
           <Route element={<PlatformLayout />}>
             <Route index element={<Navigate to="/editor" replace />} />
             <Route path="/editor" element={<EditorPage />} />
-            <Route path="/editor/:id" element={<EditorDetailPage />} />
+            <Route path="/editor/:id" element={<EditorPage />} />
             <Route path="/internship" element={<InternshipPage />} />
             <Route path="/internship/:id" element={<InternshipDetailPage />} />
-            <Route path="/admin" element={<AdminIndex />} />
             <Route path="/registration/courses" element={<CoursesPage />} />
             <Route path="/registration/terms" element={<TermsPage />} />
             <Route path="/registration/sections" element={<SectionsPage />} />
@@ -58,7 +55,7 @@ export default function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <Toaster />
+      <Toaster position="bottom-right" />
     </ThemeProvider>
   )
 }
