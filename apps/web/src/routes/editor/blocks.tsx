@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loader2, Trash2, Plus, GripVertical, FileText, Copy, Pencil, MoreHorizontal, Heading3, Heading4, Heading5, Heading6, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, Trash2, Plus, GripVertical, FileText, Copy, Pencil, MoreHorizontal, Heading3, Heading4, Heading5, Heading6, ChartBar, ListPlus } from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -14,13 +14,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RichTextEditor } from '@/components/editor/rich-text-editor'
+import { RichTextEditor, InlineRichTextEditor } from '@/components/editor/rich-text-editor'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { ColHeader, AddButton, BLOCK_META, BLK_HEADING_OPTS, Col3Mode, uid, newBlockContent } from './shared'
 import { ContentLibraryDialog } from './content-library'
 import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, BlockType, GradingScale } from '@syllabee/types'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type SegmentWithBlocks = SyllabusSegment & { blocks: SyllabusBlock[] }
 
@@ -157,26 +162,18 @@ function BlockContentPreview({ type, content }: {
             )
 
         case 'list_block': {
-            type PItem = { id: string; text: string; level?: number }
+            type PItem = { id: string; text: string }
             const items = (content.items as PItem[]) ?? []
             if (items.length === 0) return <p className="text-xs text-muted-foreground italic">No items.</p>
-            const isNew = !!content.levelStyles
-            const levelStyles = (content.levelStyles as Record<string, string>) ?? {}
-            const legacyStyle = (content.style as string) ?? 'bullet'
-            if (isNew) {
-                return (
-                    <ul className="pl-3 space-y-0.5">
-                        {items.map(it => (
-                            <li key={it.id} className="text-xs" style={{ listStyleType: levelStyles[String(it.level ?? 1)] ?? 'disc', marginLeft: `${((it.level ?? 1) - 1) * 12}px` }}>
-                                {it.text}
-                            </li>
-                        ))}
-                    </ul>
-                )
-            }
-            return legacyStyle === 'numbered'
-                ? <ol className="list-decimal list-inside space-y-0.5">{items.map(it => <li key={it.id} className="text-xs">{it.text}</li>)}</ol>
-                : <ul className="list-disc list-inside space-y-0.5">{items.map(it => <li key={it.id} className="text-xs">{it.text}</li>)}</ul>
+            const topStyle = (content.style as string) ?? 'disc'
+            const cssStyle = !topStyle || topStyle === 'bullet' ? 'disc' : topStyle === 'numbered' ? 'decimal' : topStyle
+            return (
+                <ul className="pl-3 space-y-0.5">
+                    {items.map(it => (
+                        <li key={it.id} className="text-xs" style={{ listStyleType: cssStyle }}>{it.text}</li>
+                    ))}
+                </ul>
+            )
         }
 
         case 'table_block': {
@@ -265,6 +262,128 @@ function BlockContentPreview({ type, content }: {
     }
 }
 
+// ── List block types + recursive level editor ─────────────────────────────────
+
+type ListItemNode = { id: string; text: string; children?: ListLevelData }
+type ListLevelData = { id: string; style: string; items: ListItemNode[] }
+
+const LIST_DEFAULT_STYLES: Record<number, string> = { 1: 'disc', 2: 'circle', 3: 'square', 4: 'disc', 5: 'circle' }
+
+const ListStyleSelectContent = () => (
+    <SelectContent>
+        <SelectGroup>
+            <SelectLabel>Bulleted</SelectLabel>
+            <SelectItem value="disc">Disc (●)</SelectItem>
+            <SelectItem value="circle">Circle (○)</SelectItem>
+            <SelectItem value="square">Square (■)</SelectItem>
+        </SelectGroup>
+        <SelectSeparator />
+        <SelectGroup>
+            <SelectLabel>Numbered</SelectLabel>
+            <SelectItem value="decimal">Decimal (1, 2, 3…)</SelectItem>
+            <SelectItem value="decimal-leading-zero">Decimal leading zero (01, 02…)</SelectItem>
+            <SelectItem value="upper-roman">Upper Roman (I, II, III…)</SelectItem>
+            <SelectItem value="lower-roman">Lower Roman (i, ii, iii…)</SelectItem>
+            <SelectItem value="upper-alpha">Upper Alpha (A, B, C…)</SelectItem>
+            <SelectItem value="lower-alpha">Lower Alpha (a, b, c…)</SelectItem>
+            <SelectItem value="upper-greek">Upper Greek (Α, Β, Γ…)</SelectItem>
+            <SelectItem value="lower-greek">Lower Greek (α, β, γ…)</SelectItem>
+            <SelectItem value="none">None</SelectItem>
+        </SelectGroup>
+    </SelectContent>
+)
+
+function ListLevelEditor({ data, depth, locked, onChange, onRemove }: {
+    data: ListLevelData
+    depth: number
+    locked: boolean
+    onChange: (d: ListLevelData) => void
+    onRemove?: () => void
+}) {
+    return (
+        <div className={cn('space-y-2', depth > 1 && 'ml-5 border-l pl-3 mt-2')}>
+            <div className="flex items-center gap-1">
+                {!locked && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button type="button" variant="outline" size="icon" className="h-7 w-7 rounded-none"
+                                    onClick={() => onChange({ ...data, items: [...data.items, { id: uid(), text: '' }] })}>
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Add Item
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                <Select value={data.style} disabled={locked} onValueChange={v => onChange({ ...data, style: v })}>
+                    <SelectTrigger className="h-7 text-xs flex-1 rounded-none"><SelectValue /></SelectTrigger>
+                    <ListStyleSelectContent />
+                </Select>
+                {depth > 1 && onRemove && !locked && (
+                    <Button type="button" variant="ghost" size="icon"
+                        className="h-7 w-7 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        onClick={onRemove}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+            </div>
+
+            {data.items.map((item, idx) => (
+                <div key={item.id} className="space-y-1">
+                    <div className="flex items-center gap-1">
+                        <InlineRichTextEditor
+                            content={item.text}
+                            onChange={html => onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, text: html } : it) })}
+                            rows={1}
+                            disabled={locked}
+                            placeholder="Item text"
+                            className="flex-1 rounded-none"
+                        />
+                        <div className="flex flex-col items-center justify-end gap-1">
+                            {!locked && (
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                        onClick={() => onChange({ ...data, items: data.items.filter((_, i) => i !== idx) })}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                            {!locked && depth < 5 && !item.children && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Add nested list"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                        const newChild: ListLevelData = {
+                                            id: uid(),
+                                            style: LIST_DEFAULT_STYLES[depth + 1] ?? 'disc',
+                                            items: [{ id: uid(), text: '' }],
+                                        }
+                                        onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, children: newChild } : it) })
+                                    }}
+                                >
+                                    <ListPlus className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {item.children && (
+                        <ListLevelEditor
+                            data={item.children}
+                            depth={depth + 1}
+                            locked={locked}
+                            onChange={children => onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, children } : it) })}
+                            onRemove={() => onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, children: undefined } : it) })}
+                        />
+                    )}
+                </div>
+            ))}
+        </div>
+    )
+}
+
 // ── Block picker ──────────────────────────────────────────────────────────────
 
 function BlockPicker({ onPick, onCopyFromLibrary }: {
@@ -274,7 +393,7 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
     return (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <div className="grid grid-cols-3 gap-3">
-                {(Object.entries(BLOCK_META) as [BlockType, { label: string; Icon: React.ElementType }][]).map(([type, { label, Icon }]) => (
+                {(Object.entries(BLOCK_META) as [BlockType, { label: string; Icon: React.ElementType }][]).sort((a, b) => a[1].label.localeCompare(b[1].label)).map(([type, { label, Icon }]) => (
                     <button
                         key={type}
                         onClick={() => onPick(type)}
@@ -469,7 +588,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">Section {idx + 1}</span>
                                         {!locked && (
-                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                                 onClick={() => onChange({ ...content, sections: sections.filter((_, i) => i !== idx) })}>
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -517,106 +636,16 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
             )
 
         case 'list_block': {
-            type LItem = { id: string; text: string; level: number }
-            const defaultStyles: Record<string, string> = { '1': 'disc', '2': 'circle', '3': 'square', '4': 'disc', '5': 'circle' }
-            const levelStyles = (content.levelStyles as Record<string, string>) ?? defaultStyles
-            const items: LItem[] = ((content.items as { id: string; text: string; level?: number }[]) ?? [])
-                .map(it => ({ ...it, level: it.level ?? 1 }))
-
-            function updateStyles(s: Record<string, string>) {
-                onChange({ ...content, levelStyles: s, items })
+            const rawStyle = content.style as string | undefined
+            const normalizedStyle = !rawStyle || rawStyle === 'bullet' ? 'disc' : rawStyle === 'numbered' ? 'decimal' : rawStyle
+            const rawItems = (content.items as { id: string; text: string; children?: ListLevelData }[]) ?? []
+            const rootData: ListLevelData = {
+                id: 'root',
+                style: content.levelStyles ? 'disc' : normalizedStyle,
+                items: rawItems.map(it => ({ id: it.id, text: it.text, children: it.children })),
             }
-            function updateItems(newItems: LItem[]) {
-                onChange({ ...content, levelStyles, items: newItems })
-            }
-
-            const styleOptionsSx = 'text-xs h-7'
-            return (
-                <div className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label>Level Styles</Label>
-                        <div className="space-y-1.5">
-                            {([1, 2, 3, 4, 5] as const).map(lvl => (
-                                <div key={lvl} className="flex items-center gap-2" style={{ paddingLeft: `${(lvl - 1) * 14}px` }}>
-                                    <span className="text-xs text-muted-foreground w-14 shrink-0">Level {lvl}</span>
-                                    <Select
-                                        value={levelStyles[String(lvl)] ?? 'disc'}
-                                        disabled={locked}
-                                        onValueChange={v => updateStyles({ ...levelStyles, [String(lvl)]: v })}
-                                    >
-                                        <SelectTrigger className={`flex-1 ${styleOptionsSx}`}><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                <SelectLabel>Bulleted</SelectLabel>
-                                                <SelectItem value="disc">Disc (●)</SelectItem>
-                                                <SelectItem value="circle">Circle (○)</SelectItem>
-                                                <SelectItem value="square">Square (■)</SelectItem>
-                                            </SelectGroup>
-                                            <SelectSeparator />
-                                            <SelectGroup>
-                                                <SelectLabel>Numbered</SelectLabel>
-                                                <SelectItem value="decimal">Decimal (1, 2, 3…)</SelectItem>
-                                                <SelectItem value="decimal-leading-zero">Decimal leading zero (01, 02…)</SelectItem>
-                                                <SelectItem value="upper-roman">Upper Roman (I, II, III…)</SelectItem>
-                                                <SelectItem value="lower-roman">Lower Roman (i, ii, iii…)</SelectItem>
-                                                <SelectItem value="upper-alpha">Upper Alpha (A, B, C…)</SelectItem>
-                                                <SelectItem value="lower-alpha">Lower Alpha (a, b, c…)</SelectItem>
-                                                <SelectItem value="upper-greek">Upper Greek (Α, Β, Γ…)</SelectItem>
-                                                <SelectItem value="lower-greek">Lower Greek (α, β, γ…)</SelectItem>
-                                                <SelectItem value="none">None</SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Items</Label>
-                        {items.map((item, idx) => (
-                            <div key={item.id} className="flex items-center gap-1" style={{ paddingLeft: `${(item.level - 1) * 16}px` }}>
-                                <button
-                                    type="button"
-                                    disabled={locked || item.level <= 1}
-                                    title="Decrease indent"
-                                    onClick={() => updateItems(items.map((it, i) => i === idx ? { ...it, level: Math.max(1, it.level - 1) } : it))}
-                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 shrink-0"
-                                >
-                                    <ChevronLeft className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={locked || item.level >= 5}
-                                    title="Increase indent"
-                                    onClick={() => updateItems(items.map((it, i) => i === idx ? { ...it, level: Math.min(5, it.level + 1) } : it))}
-                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 shrink-0"
-                                >
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                </button>
-                                <Input
-                                    value={item.text}
-                                    disabled={locked}
-                                    placeholder="Item text"
-                                    className="flex-1 h-7 text-xs rounded-none"
-                                    onChange={e => updateItems(items.map((it, i) => i === idx ? { ...it, text: e.target.value } : it))}
-                                />
-                                {!locked && (
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0"
-                                        onClick={() => updateItems(items.filter((_, i) => i !== idx))}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                        {!locked && (
-                            <Button type="button" variant="outline" size="sm" className="rounded-none"
-                                onClick={() => updateItems([...items, { id: uid(), text: '', level: items.length > 0 ? items[items.length - 1].level : 1 }])}>
-                                <Plus className="h-4 w-4 mr-1" />Add Item
-                            </Button>
-                        )}
-                    </div>
-                </div>
-            )
+            return <ListLevelEditor data={rootData} depth={1} locked={locked}
+                onChange={d => onChange({ style: d.style, items: d.items })} />
         }
 
         case 'table_block': {
@@ -641,7 +670,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                                         ))}
                                         {!locked && (
                                             <td className="border-0 pl-1">
-                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8"
+                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                                     onClick={() => onChange({ ...content, rows: rows.filter((_, i) => i !== rIdx) })}>
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
@@ -1131,7 +1160,7 @@ export function BlockColumn({
                         title="Student Progress"
                         subtitle=""
                         onBack={() => setCol3Mode('blocks')}
-                        icon={<Users className="h-4 w-4" />}
+                        icon={<ChartBar className="h-4 w-4" />}
                     />
                     <div className="flex-1 flex items-center justify-center p-8">
                         <p className="text-xs text-muted-foreground text-center">Student progress tracking coming soon.</p>

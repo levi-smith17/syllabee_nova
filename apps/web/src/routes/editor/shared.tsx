@@ -1,7 +1,7 @@
 import React from 'react'
 import {
     Plus, ChevronLeft,
-    Type, AlignLeft, Video, List, Table2, BarChart3,
+    Type, AlignLeft, Video, List, Table2, ChartCandlestick,
     Paperclip, MessageSquare, Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,7 +21,7 @@ export const BLOCK_META: Record<BlockType, { label: string; Icon: React.ElementT
     video_block:                { label: 'Video',               Icon: Video },
     list_block:                 { label: 'List',                Icon: List },
     table_block:                { label: 'Table',               Icon: Table2 },
-    grade_determination_block:  { label: 'Grade Determination', Icon: BarChart3 },
+    grade_determination_block:  { label: 'Grade Determination', Icon: ChartCandlestick },
     file_block:                 { label: 'Files',               Icon: Paperclip },
     response_block:             { label: 'Response',            Icon: MessageSquare },
     schedule_block:             { label: 'Schedule',            Icon: Calendar },
@@ -40,7 +40,7 @@ export function newBlockContent(type: BlockType): Record<string, unknown> {
         case 'details_block':             return { summary: '', sections: [{ id: uid(), html: '' }] }
         case 'file_block':                return { attachments: [] }
         case 'grade_determination_block': return { rows: [], gradingScaleId: '' }
-        case 'list_block':                return { levelStyles: { '1': 'disc', '2': 'circle', '3': 'square', '4': 'disc', '5': 'circle' }, items: [] }
+        case 'list_block':                return { style: 'disc', items: [{ id: uid(), text: '' }] }
         case 'response_block':            return { questions: [] }
         case 'schedule_block':            return { units: [] }
         case 'table_block':               return { rows: [{ id: uid(), cells: [{ value: '' }] }] }

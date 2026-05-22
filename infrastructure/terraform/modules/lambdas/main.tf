@@ -7,6 +7,7 @@ locals {
     local.lambdas_quicklinks,
     local.lambdas_registration,
     local.lambdas_settings,
+    local.lambdas_viewer,
   )
 
   unique_policy_arns = {

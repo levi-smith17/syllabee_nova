@@ -262,7 +262,7 @@ function SyllabusAddForm({ terms, syllabi, onSave, isSaving }: {
                 <RichTextEditor
                     content={officeHours}
                     onChange={setOfficeHours}
-                    placeholder="e.g. Tuesdays 2–4 pm, Office 301…"
+                    className="rounded-none"
                 />
             </div>
 
@@ -356,6 +356,7 @@ function SyllabusEditForm({ syllabus, locked, onSave, onDelete, isSaving }: {
                     <RichTextEditor
                         content={form.officeHours}
                         onChange={!locked ? f('officeHours') : () => {}}
+                        className="rounded-none"
                     />
                 </div>
 

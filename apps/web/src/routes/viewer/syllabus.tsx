@@ -61,7 +61,7 @@ export default function SyllabusViewerPage() {
     const { data, isLoading, isError } = useQuery({
         queryKey: ['viewer', courseCode, termCode, sectionCode],
         queryFn: () =>
-            apiFetch<{ data: ViewerResponse }>(`/viewer/${courseCode}/${termCode}/${sectionCode}`)
+            apiFetch<{ data: ViewerResponse }>(`/viewer/${courseCode}/${sectionCode}/${termCode}`)
                 .then(r => r.data!),
         enabled: !!courseCode && !!termCode && !!sectionCode,
     })
@@ -97,7 +97,7 @@ export default function SyllabusViewerPage() {
     React.useEffect(() => { setCurrentIndex(0) }, [isInteractive, data])
 
     function viewerUrl(mode?: string) {
-        const base = `/s/${courseCode}/${termCode}/${sectionCode}`
+        const base = `/s/${courseCode}/${sectionCode}/${termCode}`
         return mode ? `${base}?mode=${mode}` : base
     }
 

@@ -3,7 +3,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda
 import { dynamo, TABLE_NAME } from '../../shared/db'
 import { toApiGatewayResponse, ok, notFound, serverError } from '../../shared/response'
 
-// GET /viewer/:courseCode/:termCode/:sectionCode
+// GET /viewer/:courseCode/:sectionCode/:termCode
 // Public endpoint — returns syllabus viewer data for a given section.
 export const handler = async (
     event: APIGatewayProxyEventV2

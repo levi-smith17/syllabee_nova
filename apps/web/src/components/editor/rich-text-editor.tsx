@@ -24,6 +24,98 @@ import {
   Highlighter,
 } from "lucide-react";
 
+interface InlineProps {
+  content: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  rows?: number;
+  disabled?: boolean;
+  className?: string;
+}
+
+export function InlineRichTextEditor({ content, onChange, placeholder, rows = 2, disabled = false, className }: InlineProps) {
+  const minHeight = `${rows * 24}px`;
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Placeholder.configure({ placeholder: placeholder ?? "Write something…" }),
+    ],
+    content,
+    editable: !disabled,
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      attributes: {
+        class: `prose prose-sm dark:prose-invert max-w-none focus:outline-none px-2 py-1.5 text-xs`,
+        style: `min-height: ${minHeight}`,
+      },
+    },
+  });
+
+  React.useEffect(() => {
+    if (editor && editor.isEditable === disabled) {
+      editor.setEditable(!disabled);
+    }
+  }, [disabled, editor]);
+
+  if (!editor) return null;
+
+  const ToolbarButton = ({
+    onClick,
+    active,
+    title,
+    children,
+  }: {
+    onClick: () => void;
+    active?: boolean;
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <button
+      type="button"
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      title={title}
+      disabled={disabled}
+      className={cn(
+        "flex h-6 w-6 items-center justify-center rounded text-sm transition-colors hover:bg-muted disabled:opacity-40",
+        active && "bg-muted text-foreground"
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className={cn("rounded border border-input overflow-hidden", disabled && "opacity-60 pointer-events-none", className)}>
+      <div className="flex items-center gap-0.5 border-b bg-muted/40 px-1.5 py-0.5">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          active={editor.isActive("bold")}
+          title="Bold"
+        >
+          <Bold className="h-3 w-3" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          active={editor.isActive("italic")}
+          title="Italic"
+        >
+          <Italic className="h-3 w-3" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          active={editor.isActive("underline")}
+          title="Underline"
+        >
+          <UnderlineIcon className="h-3 w-3" />
+        </ToolbarButton>
+      </div>
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 

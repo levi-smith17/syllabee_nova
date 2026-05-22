@@ -408,11 +408,12 @@ export default function EditorPage() {
                     setEditingSegmentId={setEditingSegmentId}
                     selectedSegmentId={selectedSegmentId}
                     onSelectSegment={segId => {
-                        if (segId === selectedSegmentId && !isMobile) {
+                        if (segId === selectedSegmentId && !isMobile && col3Mode === 'blocks') {
+                            // Toggle: deselect only when blocks column is already showing
                             setSelectedSegmentId(null)
                             setSelectedBlockId(null)
-                            setCol3Mode('blocks')
                         } else {
+                            // Any other mode (studentProgress, editBlock, etc.): always open blocks
                             setSelectedSegmentId(segId)
                             setSelectedBlockId(null)
                             setCol3Mode('blocks')

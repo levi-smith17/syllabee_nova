@@ -127,24 +127,39 @@ function VideoBlockView({ data }: { data: Record<string, unknown> }) {
 
 // ── List ──────────────────────────────────────────────────────────────────────
 
-function ListBlockView({ data }: { data: Record<string, unknown> }) {
-    type Item = { id: string; text: string; level?: number }
-    const items = (data.items as Item[]) ?? []
-    if (!items.length) return null
+type ListItemNode = { id: string; text: string; children?: { id: string; style: string; items: ListItemNode[] } }
 
-    const isNew = !!data.levelStyles
-    if (isNew) {
+function renderListLevel(items: ListItemNode[], style: string): React.ReactNode {
+    const cssStyle = !style || style === 'bullet' ? 'disc' : style === 'numbered' ? 'decimal' : style
+    return (
+        <ul className="pl-5 space-y-0.5" style={{ listStyleType: cssStyle }}>
+            {items.map(item => (
+                <li key={item.id}>
+                    {item.text.startsWith('<')
+                        ? <span dangerouslySetInnerHTML={{ __html: item.text }} />
+                        : item.text}
+                    {item.children && renderListLevel(item.children.items, item.children.style)}
+                </li>
+            ))}
+        </ul>
+    )
+}
+
+function ListBlockView({ data }: { data: Record<string, unknown> }) {
+    type FlatItem = { id: string; text: string; level?: number }
+
+    // New tree format: items have optional children with their own style
+    const rawItems = (data.items as ListItemNode[]) ?? []
+    if (!rawItems.length) return null
+
+    // Detect intermediate format: levelStyles dict + flat items with level property
+    if (data.levelStyles) {
         const levelStyles = (data.levelStyles as Record<string, string>) ?? {}
+        const flatItems = rawItems as unknown as FlatItem[]
         return (
             <ul className="pl-4 space-y-1 text-sm">
-                {items.map(item => (
-                    <li
-                        key={item.id}
-                        style={{
-                            listStyleType: levelStyles[String(item.level ?? 1)] ?? 'disc',
-                            marginLeft: `${((item.level ?? 1) - 1) * 20}px`,
-                        }}
-                    >
+                {flatItems.map(item => (
+                    <li key={item.id} style={{ listStyleType: levelStyles[String(item.level ?? 1)] ?? 'disc', marginLeft: `${((item.level ?? 1) - 1) * 20}px` }}>
                         {item.text}
                     </li>
                 ))}
@@ -152,13 +167,20 @@ function ListBlockView({ data }: { data: Record<string, unknown> }) {
         )
     }
 
-    const legacyStyle = (data.style as string) ?? 'bullet'
-    const Tag = legacyStyle === 'numbered' ? 'ol' : 'ul'
-    return (
-        <Tag className={`text-sm pl-5 space-y-1 ${legacyStyle === 'numbered' ? 'list-decimal' : 'list-disc'}`}>
-            {items.map(item => <li key={item.id}>{item.text}</li>)}
-        </Tag>
-    )
+    const rawStyle = (data.style as string) ?? 'disc'
+
+    // Legacy format: style was 'bullet' or 'numbered', no children
+    if (rawStyle === 'bullet' || rawStyle === 'numbered') {
+        const Tag = rawStyle === 'numbered' ? 'ol' : 'ul'
+        return (
+            <Tag className={`text-sm pl-5 space-y-1 ${rawStyle === 'numbered' ? 'list-decimal' : 'list-disc'}`}>
+                {rawItems.map(item => <li key={item.id}>{item.text}</li>)}
+            </Tag>
+        )
+    }
+
+    // Current tree format
+    return <div className="text-sm">{renderListLevel(rawItems, rawStyle)}</div>
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────

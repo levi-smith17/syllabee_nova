@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, BookOpen, Users, Check, ExternalLink } from 'lucide-react'
+import { Binoculars, Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, BookOpen, ChartBar, Check, ExternalLink } from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -71,7 +71,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
         .filter(Boolean) as EditorSection[]
 
     function copyUrl(sec: EditorSection) {
-        const url = `${window.location.origin}/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`
+        const url = `${window.location.origin}/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`
         void navigator.clipboard.writeText(url)
         setCopiedSectionId(sec.id)
         setTimeout(() => setCopiedSectionId(null), 1500)
@@ -135,7 +135,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                 className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
                                 title="View Syllabi"
                             >
-                                <BookOpen className="h-4 w-4" />
+                                <Binoculars className="h-4 w-4" />
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" side="right" className="min-w-52">
@@ -148,7 +148,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                         <>
                                             <DropdownMenuItem asChild>
                                                 <a
-                                                    href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}?mode=complete`}
+                                                    href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}?mode=complete`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
@@ -159,7 +159,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                             </DropdownMenuItem>
                                             <DropdownMenuItem asChild>
                                                 <a
-                                                    href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`}
+                                                    href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
@@ -172,7 +172,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                     ) : (
                                         <DropdownMenuItem asChild>
                                             <a
-                                                href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`}
+                                                href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 cursor-pointer"
@@ -213,7 +213,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                         onClick={onOpenStudentProgress}
                         title="Student Progress"
                     >
-                        <Users className="h-4 w-4" />
+                        <ChartBar className="h-4 w-4" />
                     </button>
                 )}
             </div>

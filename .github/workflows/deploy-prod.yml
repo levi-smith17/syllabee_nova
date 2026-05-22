@@ -236,3 +236,14 @@ jobs:
     secrets:
       aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
       aws_region: ${{ secrets.AWS_REGION }}
+
+  deploy-lambda-viewer:
+    name: Deploy Lambda — Viewer
+    needs: [ build-lambda, terraform-apply ]
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: prod
+      functions: viewer/get
+    secrets:
+      aws_role_arn: ${{ secrets.PROD_AWS_ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
