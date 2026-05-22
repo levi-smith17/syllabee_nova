@@ -21,14 +21,20 @@ export const handler = async (
         const id = randomUUID()
         const now = new Date().toISOString()
 
+        const cId = String(courseId)
+        const tId = String(termId)
+        const sc = String(sectionCode)
+
         await dynamo.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: {
                 pk: `SECTION#${id}`,
                 sk: 'METADATA',
-                courseId: String(courseId),
-                termId: String(termId),
-                sectionCode: String(sectionCode),
+                gsi1pk: `SECTION_LOOKUP#${cId}#${tId}`,
+                gsi1sk: sc,
+                courseId: cId,
+                termId: tId,
+                sectionCode: sc,
                 formatId: formatId ?? null,
                 instructorId: instructorId ?? null,
                 roomNumber: roomNumber ?? null,

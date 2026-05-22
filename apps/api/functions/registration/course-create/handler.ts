@@ -34,12 +34,16 @@ export const handler = async (
         const id = randomUUID()
         const now = new Date().toISOString()
 
+        const upperCode = String(code).toUpperCase()
+
         await dynamo.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: {
                 pk: `COURSE#${id}`,
                 sk: 'METADATA',
-                code: String(code).toUpperCase(),
+                gsi1pk: 'TYPE#COURSE',
+                gsi1sk: upperCode,
+                code: upperCode,
                 title: String(title),
                 description: description ?? null,
                 creditHours: Number(creditHours),

@@ -21,13 +21,17 @@ export const handler = async (
         const id = randomUUID()
         const now = new Date().toISOString()
 
+        const upperCode = String(code).toUpperCase()
+
         await dynamo.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: {
                 pk: `TERM#${id}`,
                 sk: 'METADATA',
+                gsi1pk: 'TYPE#TERM',
+                gsi1sk: upperCode,
                 name: String(name),
-                code: String(code).toUpperCase(),
+                code: upperCode,
                 startDate: String(startDate),
                 endDate: String(endDate),
                 isActive: true,

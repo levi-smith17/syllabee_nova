@@ -1,5 +1,20 @@
 import React from 'react'
-import { Loader2, Trash2, Plus, GripVertical, FileText, Copy, Pencil, MoreHorizontal, Heading3, Heading4, Heading5, Heading6, ChartBar, ListPlus } from 'lucide-react'
+import {
+    Loader2,
+    Trash2,
+    Plus,
+    GripVertical,
+    FileText,
+    Copy,
+    Pencil,
+    MoreHorizontal,
+    Heading3,
+    Heading4,
+    Heading5,
+    Heading6,
+    ChartBar,
+    ListPlus,
+} from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -18,7 +33,7 @@ import { RichTextEditor, InlineRichTextEditor } from '@/components/editor/rich-t
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { ColHeader, AddButton, BLOCK_META, BLK_HEADING_OPTS, Col3Mode, uid, newBlockContent } from './shared'
+import { ColHeader, AddButton, DeleteButton, BLOCK_META, BLK_HEADING_OPTS, Col3Mode, uid, newBlockContent } from './shared'
 import { ContentLibraryDialog } from './content-library'
 import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, BlockType, GradingScale } from '@syllabee/types'
 import {
@@ -88,17 +103,25 @@ function SortableBlockRow({ block, selected, onEdit, onDelete, draggingHeading }
                 <Icon className="h-4 w-4 text-black my-0.5 shrink-0" />
                 <HeadingIcon className="h-4 w-4 text-black my-0.5 shrink-0" />
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className="p-1.5 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost"
+                                    className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="ml-1">
+                            Manage Block
+                        </TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="start" side="right">
                         <DropdownMenuItem onClick={onEdit}>
                             <Pencil className="h-4 w-4 mr-2" />Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            className="text-red-500 focus:text-red-600 focus:bg-red-500/10"
+                            className="text-destructive focus:text-destructive/75 focus:bg-destructive/10"
                             onClick={onDelete}
                         >
                             <Trash2 className="h-4 w-4 mr-2" />Delete
@@ -162,16 +185,31 @@ function BlockContentPreview({ type, content }: {
             )
 
         case 'list_block': {
-            type PItem = { id: string; text: string }
-            const items = (content.items as PItem[]) ?? []
+            type PreviewNode = { id: string; text: string; children?: { id: string; style: string; items: PreviewNode[] } }
+            const items = (content.items as PreviewNode[]) ?? []
             if (items.length === 0) return <p className="text-xs text-muted-foreground italic">No items.</p>
             const topStyle = (content.style as string) ?? 'disc'
-            const cssStyle = !topStyle || topStyle === 'bullet' ? 'disc' : topStyle === 'numbered' ? 'decimal' : topStyle
+            const toCss = (s: string) => !s || s === 'bullet' ? 'disc' : s === 'numbered' ? 'decimal' : s
+
+            function renderNode(node: PreviewNode, style: string): React.ReactNode {
+                const itemHtml = node.text.startsWith('<') ? node.text : undefined
+                return (
+                    <li key={node.id} style={{ listStyleType: style }}>
+                        {itemHtml
+                            ? <span className="[&_p]:inline [&_p]:m-0" dangerouslySetInnerHTML={{ __html: itemHtml }} />
+                            : node.text}
+                        {node.children && node.children.items.length > 0 && (
+                            <ul className="pl-3 mt-0.5">
+                                {node.children.items.map(c => renderNode(c, toCss(node.children!.style)))}
+                            </ul>
+                        )}
+                    </li>
+                )
+            }
+
             return (
-                <ul className="pl-3 space-y-0.5">
-                    {items.map(it => (
-                        <li key={it.id} className="text-xs" style={{ listStyleType: cssStyle }}>{it.text}</li>
-                    ))}
+                <ul className="pl-3 space-y-0.5 text-xs">
+                    {items.map(it => renderNode(it, toCss(topStyle)))}
                 </ul>
             )
         }
@@ -302,7 +340,7 @@ function ListLevelEditor({ data, depth, locked, onChange, onRemove }: {
 }) {
     return (
         <div className={cn('space-y-2', depth > 1 && 'ml-5 border-l pl-3 mt-2')}>
-            <div className="flex items-center gap-1">
+            <div className="flex items-start gap-1">
                 {!locked && (
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -321,17 +359,24 @@ function ListLevelEditor({ data, depth, locked, onChange, onRemove }: {
                     <ListStyleSelectContent />
                 </Select>
                 {depth > 1 && onRemove && !locked && (
-                    <Button type="button" variant="ghost" size="icon"
-                        className="h-7 w-7 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                        onClick={onRemove}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon"
+                                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive/75 hover:bg-destructive/10"
+                                onClick={onRemove}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Delete Nested List
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
 
             {data.items.map((item, idx) => (
                 <div key={item.id} className="space-y-1">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-start gap-1">
                         <InlineRichTextEditor
                             content={item.text}
                             onChange={html => onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, text: html } : it) })}
@@ -342,29 +387,43 @@ function ListLevelEditor({ data, depth, locked, onChange, onRemove }: {
                         />
                         <div className="flex flex-col items-center justify-end gap-1">
                             {!locked && (
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                        onClick={() => onChange({ ...data, items: data.items.filter((_, i) => i !== idx) })}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/75 hover:bg-destructive/10"
+                                                onClick={() => onChange({ ...data, items: data.items.filter((_, i) => i !== idx) })}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Delete Item
+                                    </TooltipContent>
+                                </Tooltip>
                             )}
                             {!locked && depth < 5 && !item.children && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    title="Add nested list"
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
-                                        const newChild: ListLevelData = {
-                                            id: uid(),
-                                            style: LIST_DEFAULT_STYLES[depth + 1] ?? 'disc',
-                                            items: [{ id: uid(), text: '' }],
-                                        }
-                                        onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, children: newChild } : it) })
-                                    }}
-                                >
-                                    <ListPlus className="h-3.5 w-3.5" />
-                                </Button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            title="Add nested list"
+                                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                            onClick={() => {
+                                                const newChild: ListLevelData = {
+                                                    id: uid(),
+                                                    style: LIST_DEFAULT_STYLES[depth + 1] ?? 'disc',
+                                                    items: [{ id: uid(), text: '' }],
+                                                }
+                                                onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, children: newChild } : it) })
+                                            }}
+                                        >
+                                            <ListPlus className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        Add Nested List
+                                    </TooltipContent>
+                                </Tooltip>
                             )}
                         </div>
                     </div>
@@ -392,23 +451,27 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
 }) {
     return (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-                {(Object.entries(BLOCK_META) as [BlockType, { label: string; Icon: React.ElementType }][]).sort((a, b) => a[1].label.localeCompare(b[1].label)).map(([type, { label, Icon }]) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {(Object.entries(BLOCK_META) as [BlockType, { label: string; Icon: React.ElementType, description: string }][]).sort((a, b) => a[1].label.localeCompare(b[1].label)).map(([type, { label, Icon, description }]) => (
                     <button
                         key={type}
                         onClick={() => onPick(type)}
-                        className="flex flex-col items-center gap-2 border p-4 hover:bg-muted/50 hover:border-primary/50 transition-colors text-center"
+                        className="flex flex-col items-center gap-2 border p-4 hover:bg-muted/50 hover:border-primary/50 transition-colors text-left"
                     >
-                        <Icon className="h-6 w-6 text-primary" />
-                        <span className="text-xs font-medium leading-tight">{label}</span>
+                        <div className="flex items-center gap-2 w-full">
+                            <Icon className="h-6 w-6 text-primary shrink-0" />
+                            <span className="text-xs font-medium leading-tight truncate">{label}</span>
+                        </div>
+                        <span className="text-xs font-medium text-muted-foreground">{description}</span>
                     </button>
                 ))}
             </div>
             <button
                 onClick={onCopyFromLibrary}
-                className="w-full flex items-center justify-center gap-2 border border-dashed border-border px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                className="w-full flex items-center justify-center gap-2 border border-border px-4 py-3 text-xs font-medium hover:border-primary/50 hover:bg-muted/50 transition-colors"
             >
-                <Copy className="h-4 w-4" />Copy from Library
+                <Copy className="h-6 w-6 text-primary shrink-0" />
+                <span className="text-xs font-medium leading-tight truncate">Copy from Library</span>
             </button>
         </div>
     )
@@ -416,7 +479,7 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
 
 // ── Block form ────────────────────────────────────────────────────────────────
 
-function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGroups, onSave, onDelete, isSaving }: {
+function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGroups, onSave, isSaving }: {
     mode: 'add' | 'edit'
     block?: SyllabusBlock
     type: BlockType
@@ -516,15 +579,13 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
                 </div>
             </div>
 
-            <div className="pt-2">
-                <BlockContentEditor
-                    type={type}
-                    content={content}
-                    locked={locked ?? false}
-                    gradingScales={gradingScales}
-                    onChange={setContent}
-                />
-            </div>
+            <BlockContentEditor
+                type={type}
+                content={content}
+                locked={locked ?? false}
+                gradingScales={gradingScales}
+                onChange={setContent}
+            />
             {!locked && (
                 <div className="space-y-2 pt-2">
                     <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
@@ -532,16 +593,6 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Block' : 'Save Block'}
                     </Button>
-                    {mode !== 'add' && onDelete && (
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={onDelete}
-                            className="w-full rounded-none h-9 text-xs"
-                        >
-                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Block
-                        </Button>
-                    )}
                 </div>
             )}
         </form>
@@ -588,7 +639,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">Section {idx + 1}</span>
                                         {!locked && (
-                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/75 hover:bg-destructive/10"
                                                 onClick={() => onChange({ ...content, sections: sections.filter((_, i) => i !== idx) })}>
                                                 <Trash2 className="h-3 w-3" />
                                             </Button>
@@ -609,8 +660,9 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                             <p className="text-xs text-muted-foreground italic">No content areas. Add one below.</p>
                         )}
                         {!locked && (
-                            <Button type="button" variant="outline" size="sm" className="rounded-none"
-                                onClick={() => onChange({ ...content, sections: [...sections, { id: uid(), html: '' }] })}>
+                            <Button type="button" variant="outline"
+                                    className="flex items-center gap-1 rounded-none text-xs text-muted-foreground transition-colors mt-1 w-full"
+                                    onClick={() => onChange({ ...content, sections: [...sections, { id: uid(), html: '' }] })}>
                                 <Plus className="h-4 w-4 mr-1" />Add Content Area
                             </Button>
                         )}
@@ -619,79 +671,32 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
             )
         }
 
-        case 'video_block':
+        case 'file_block': {
+            const attachments = (content.attachments as { id: string; name: string; url: string; description?: string }[]) ?? []
             return (
                 <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <Label>Video URL</Label>
-                        <Input value={(content.url as string) ?? ''} disabled={locked} className="rounded-none"
-                            onChange={e => onChange({ ...content, url: e.target.value })} placeholder="https://…" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label>Caption</Label>
-                        <Input value={(content.caption as string) ?? ''} disabled={locked} className="rounded-none"
-                            onChange={e => onChange({ ...content, caption: e.target.value })} />
-                    </div>
-                </div>
-            )
-
-        case 'list_block': {
-            const rawStyle = content.style as string | undefined
-            const normalizedStyle = !rawStyle || rawStyle === 'bullet' ? 'disc' : rawStyle === 'numbered' ? 'decimal' : rawStyle
-            const rawItems = (content.items as { id: string; text: string; children?: ListLevelData }[]) ?? []
-            const rootData: ListLevelData = {
-                id: 'root',
-                style: content.levelStyles ? 'disc' : normalizedStyle,
-                items: rawItems.map(it => ({ id: it.id, text: it.text, children: it.children })),
-            }
-            return <ListLevelEditor data={rootData} depth={1} locked={locked}
-                onChange={d => onChange({ style: d.style, items: d.items })} />
-        }
-
-        case 'table_block': {
-            const rows = (content.rows as { id: string; cells: { value: string }[] }[]) ?? []
-            const colCount = rows[0]?.cells?.length ?? 1
-            function updateCell(rIdx: number, cIdx: number, value: string) {
-                onChange({ ...content, rows: rows.map((r, ri) => ri === rIdx ? { ...r, cells: r.cells.map((c, ci) => ci === cIdx ? { ...c, value } : c) } : r) })
-            }
-            return (
-                <div className="space-y-3">
-                    <div className="overflow-x-auto">
-                        <table className="text-sm border-collapse w-full">
-                            <tbody>
-                                {rows.map((row, rIdx) => (
-                                    <tr key={row.id}>
-                                        {row.cells.map((cell, cIdx) => (
-                                            <td key={cIdx} className="border p-0">
-                                                <Input value={cell.value} disabled={locked}
-                                                    onChange={e => updateCell(rIdx, cIdx, e.target.value)}
-                                                    className="border-0 rounded-none h-8 text-xs" />
-                                            </td>
-                                        ))}
-                                        {!locked && (
-                                            <td className="border-0 pl-1">
-                                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                                    onClick={() => onChange({ ...content, rows: rows.filter((_, i) => i !== rIdx) })}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {!locked && (
-                        <div className="flex gap-2">
-                            <Button type="button" variant="outline" size="sm"
-                                onClick={() => onChange({ ...content, rows: [...rows, { id: uid(), cells: Array.from({ length: colCount }, () => ({ value: '' })) }] })}>
-                                <Plus className="h-4 w-4 mr-1" />Add Row
-                            </Button>
-                            <Button type="button" variant="outline" size="sm"
-                                onClick={() => onChange({ ...content, rows: rows.map(r => ({ ...r, cells: [...r.cells, { value: '' }] })) })}>
-                                <Plus className="h-4 w-4 mr-1" />Add Column
-                            </Button>
+                    {attachments.map((att, idx) => (
+                        <div key={att.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                            <Input value={att.name} placeholder="File name" disabled={locked}
+                                   onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, name: e.target.value } : a) })} />
+                            <Input value={att.url} placeholder="URL" disabled={locked}
+                                   onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, url: e.target.value } : a) })} />
+                            <Input value={att.description ?? ''} placeholder="Description" disabled={locked}
+                                   onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, description: e.target.value } : a) })} />
+                            {!locked && (
+                                <Button type="button" variant="ghost" size="icon"
+                                        onClick={() => onChange({ ...content, attachments: attachments.filter((_, i) => i !== idx) })}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
+                    ))}
+                    {!locked && (
+                        <Button type="button" variant="outline"
+                                className="flex items-center gap-1 rounded-none text-xs text-muted-foreground transition-colors w-full"
+                                onClick={() => onChange({ ...content, attachments: [...attachments, { id: uid(), name: '', url: '', description: '' }] })}>
+                            <Plus className="h-4 w-4 mr-1" />Add Attachment
+                        </Button>
                     )}
                 </div>
             )
@@ -717,14 +722,14 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                         {rows.map((row, idx) => (
                             <div key={row.id} className="grid grid-cols-[1fr_5rem_1fr_auto] gap-2 items-center">
                                 <Input value={row.category} placeholder="Category" disabled={locked}
-                                    onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, category: e.target.value } : r) })} />
+                                       onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, category: e.target.value } : r) })} />
                                 <Input type="number" value={row.weight} placeholder="Weight %" disabled={locked}
-                                    onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, weight: Number(e.target.value) } : r) })} />
+                                       onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, weight: Number(e.target.value) } : r) })} />
                                 <Input value={row.description} placeholder="Description" disabled={locked}
-                                    onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, description: e.target.value } : r) })} />
+                                       onChange={e => onChange({ ...content, rows: rows.map((r, i) => i === idx ? { ...r, description: e.target.value } : r) })} />
                                 {!locked && (
                                     <Button type="button" variant="ghost" size="icon"
-                                        onClick={() => onChange({ ...content, rows: rows.filter((_, i) => i !== idx) })}>
+                                            onClick={() => onChange({ ...content, rows: rows.filter((_, i) => i !== idx) })}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 )}
@@ -733,7 +738,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                         <div className="flex items-center gap-4">
                             {!locked && (
                                 <Button type="button" variant="outline" size="sm"
-                                    onClick={() => onChange({ ...content, rows: [...rows, { id: uid(), category: '', weight: 0, description: '' }] })}>
+                                        onClick={() => onChange({ ...content, rows: [...rows, { id: uid(), category: '', weight: 0, description: '' }] })}>
                                     <Plus className="h-4 w-4 mr-1" />Add Row
                                 </Button>
                             )}
@@ -744,6 +749,19 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                     </div>
                 </div>
             )
+        }
+
+        case 'list_block': {
+            const rawStyle = content.style as string | undefined
+            const normalizedStyle = !rawStyle || rawStyle === 'bullet' ? 'disc' : rawStyle === 'numbered' ? 'decimal' : rawStyle
+            const rawItems = (content.items as { id: string; text: string; children?: ListLevelData }[]) ?? []
+            const rootData: ListLevelData = {
+                id: 'root',
+                style: content.levelStyles ? 'disc' : normalizedStyle,
+                items: rawItems.map(it => ({ id: it.id, text: it.text, children: it.children })),
+            }
+            return <ListLevelEditor data={rootData} depth={1} locked={locked}
+                onChange={d => onChange({ style: d.style, items: d.items })} />
         }
 
         case 'response_block': {
@@ -902,35 +920,70 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
             )
         }
 
-        case 'file_block': {
-            const attachments = (content.attachments as { id: string; name: string; url: string; description?: string }[]) ?? []
+        case 'table_block': {
+            const rows = (content.rows as { id: string; cells: { value: string }[] }[]) ?? []
+            const colCount = rows[0]?.cells?.length ?? 1
+            function updateCell(rIdx: number, cIdx: number, value: string) {
+                onChange({ ...content, rows: rows.map((r, ri) => ri === rIdx ? { ...r, cells: r.cells.map((c, ci) => ci === cIdx ? { ...c, value } : c) } : r) })
+            }
             return (
                 <div className="space-y-3">
-                    {attachments.map((att, idx) => (
-                        <div key={att.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
-                            <Input value={att.name} placeholder="File name" disabled={locked}
-                                onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, name: e.target.value } : a) })} />
-                            <Input value={att.url} placeholder="URL" disabled={locked}
-                                onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, url: e.target.value } : a) })} />
-                            <Input value={att.description ?? ''} placeholder="Description" disabled={locked}
-                                onChange={e => onChange({ ...content, attachments: attachments.map((a, i) => i === idx ? { ...a, description: e.target.value } : a) })} />
-                            {!locked && (
-                                <Button type="button" variant="ghost" size="icon"
-                                    onClick={() => onChange({ ...content, attachments: attachments.filter((_, i) => i !== idx) })}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                    ))}
+                    <div className="overflow-x-auto">
+                        <table className="text-sm border-collapse w-full">
+                            <tbody>
+                            {rows.map((row, rIdx) => (
+                                <tr key={row.id}>
+                                    {row.cells.map((cell, cIdx) => (
+                                        <td key={cIdx} className="border p-0">
+                                            <Input value={cell.value} disabled={locked}
+                                                   onChange={e => updateCell(rIdx, cIdx, e.target.value)}
+                                                   className="border-0 rounded-none h-8 text-xs" />
+                                        </td>
+                                    ))}
+                                    {!locked && (
+                                        <td className="border-0 pl-1">
+                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/75 hover:bg-destructive/10"
+                                                    onClick={() => onChange({ ...content, rows: rows.filter((_, i) => i !== rIdx) })}>
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
                     {!locked && (
-                        <Button type="button" variant="outline" size="sm"
-                            onClick={() => onChange({ ...content, attachments: [...attachments, { id: uid(), name: '', url: '', description: '' }] })}>
-                            <Plus className="h-4 w-4 mr-1" />Add Attachment
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm"
+                                    onClick={() => onChange({ ...content, rows: [...rows, { id: uid(), cells: Array.from({ length: colCount }, () => ({ value: '' })) }] })}>
+                                <Plus className="h-4 w-4 mr-1" />Add Row
+                            </Button>
+                            <Button type="button" variant="outline" size="sm"
+                                    onClick={() => onChange({ ...content, rows: rows.map(r => ({ ...r, cells: [...r.cells, { value: '' }] })) })}>
+                                <Plus className="h-4 w-4 mr-1" />Add Column
+                            </Button>
+                        </div>
                     )}
                 </div>
             )
         }
+
+        case 'video_block':
+            return (
+                <div className="space-y-3">
+                    <div className="space-y-1.5">
+                        <Label>Video URL</Label>
+                        <Input value={(content.url as string) ?? ''} disabled={locked} className="rounded-none"
+                               onChange={e => onChange({ ...content, url: e.target.value })} placeholder="https://…" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label>Caption</Label>
+                        <Input value={(content.caption as string) ?? ''} disabled={locked} className="rounded-none"
+                               onChange={e => onChange({ ...content, caption: e.target.value })} />
+                    </div>
+                </div>
+            )
 
         default:
             return <p className="text-sm text-muted-foreground">No editor for this block type.</p>
@@ -1133,7 +1186,11 @@ export function BlockColumn({
                         title="Edit Block"
                         subtitle=""
                         onBack={() => { setSelectedBlockId(null); setCol3Mode('blocks') }}
-                    />
+                    >
+                        {selectedBlock && !locked && (
+                            <DeleteButton onClick={() => setDeleteConfirmId(selectedBlock.id)} />
+                        )}
+                    </ColHeader>
                     {selectedBlock ? (
                         <BlockForm
                             mode="edit"
@@ -1143,7 +1200,6 @@ export function BlockColumn({
                             locked={locked}
                             existingPrintGroups={existingPrintGroups}
                             onSave={body => onUpdateBlock(selectedSegment.id, selectedBlock.id, body)}
-                            onDelete={() => { setDeleteConfirmId(selectedBlock.id); setCol3Mode('blocks') }}
                             isSaving={isUpdating}
                         />
                     ) : (
@@ -1198,7 +1254,7 @@ export function BlockColumn({
             <ContentLibraryDialog
                 mode="block"
                 open={libraryOpen}
-                onClose={() => { setLibraryOpen(false); setCol3Mode('blocks') }}
+                onClose={() => { setLibraryOpen(false); }}
                 syllabi={syllabi}
                 onCopyBlock={(sourceSyllabusId, sourceSegmentId, sourceBlockId) => {
                     onCopyBlock(sourceSyllabusId, sourceSegmentId, sourceBlockId)

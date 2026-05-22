@@ -22,14 +22,18 @@ export const handler = async (
         const body = JSON.parse(event.body ?? '{}')
         const { name, code, startDate, endDate, isActive } = body
 
+        const upperCode = code !== undefined ? String(code).toUpperCase() : (existing.Item.code as string)
+
         await dynamo.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { pk: `TERM#${id}`, sk: 'METADATA' },
-            UpdateExpression: 'SET #name = :name, #code = :code, startDate = :startDate, endDate = :endDate, isActive = :isActive',
+            UpdateExpression: 'SET #name = :name, #code = :code, gsi1pk = :g1pk, gsi1sk = :g1sk, startDate = :startDate, endDate = :endDate, isActive = :isActive',
             ExpressionAttributeNames: { '#name': 'name', '#code': 'code' },
             ExpressionAttributeValues: {
                 ':name': name !== undefined ? String(name) : existing.Item.name,
-                ':code': code !== undefined ? String(code).toUpperCase() : existing.Item.code,
+                ':code': upperCode,
+                ':g1pk': 'TYPE#TERM',
+                ':g1sk': upperCode,
                 ':startDate': startDate !== undefined ? String(startDate) : existing.Item.startDate,
                 ':endDate': endDate !== undefined ? String(endDate) : existing.Item.endDate,
                 ':isActive': isActive !== undefined ? Boolean(isActive) : existing.Item.isActive,

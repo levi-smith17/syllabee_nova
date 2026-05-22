@@ -1,5 +1,5 @@
 import React from 'react'
-import { Binoculars, Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, BookOpen, ChartBar, Check, ExternalLink } from 'lucide-react'
+import { Binoculars, Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, ChartBar, Check, ExternalLink } from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -16,10 +16,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { ColHeader, Col2Mode, SEG_HEADING_OPTS } from './shared'
+import { ColHeader, DeleteButton, Col2Mode, SEG_HEADING_OPTS } from './shared'
 import { SectionMultiSelect, sectionLabel } from './section-multi-select'
 import { ContentLibraryDialog } from './content-library'
 import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, EditorSection } from '@syllabee/types'
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip";
 
 type SegmentWithBlocks = SyllabusSegment & { blocks: SyllabusBlock[] }
 
@@ -97,19 +98,27 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                 >
                     <GripVertical className="h-4 w-4" />
                 </button>
-                <HeadingIcon className="h-4 w-4 text-black my-0.5 shrink-0" />
+                <HeadingIcon className="h-4 w-4 text-black my-1.5 shrink-0" />
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className="p-1.5 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="right">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                                <Button type="button" variant="ghost"
+                                        className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="mt-2">
+                            Manage Segment
+                        </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="start" side="right" onCloseAutoFocus={(e) => e.preventDefault()}>
                         <DropdownMenuItem onClick={onEdit}>
                             <Pencil className="h-4 w-4 mr-2" />Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            className="text-red-500 focus:text-red-600 focus:bg-red-500/10"
+                            className="text-destructive focus:text-destructive/75 focus:bg-destructive/10"
                             onClick={onDelete}
                         >
                             <Trash2 className="h-4 w-4 mr-2" />Delete
@@ -119,25 +128,40 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
             </div>
 
             {/* Second action bar (cyan) — visibility, view syllabi, student progress */}
-            <div className="flex flex-col items-center gap-1 py-2 px-1.5 shrink-0 bg-[hsl(var(--sidebar-foreground))]">
-                <button
-                    className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
-                    onClick={onToggleVisible}
-                    title={segment.isVisible ? 'Hide segment' : 'Show segment'}
-                >
-                    {segment.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </button>
+            <div className="flex flex-col items-center gap-1 py-2 px-1.5 shrink-0 bg-sidebar-foreground">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            type="button" variant="ghost"
+                            className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                            onClick={onToggleVisible}
+                        >
+                            {segment.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="ml-1">
+                        {segment.isVisible ? 'Hide segment' : 'Show segment'}
+                    </TooltipContent>
+                </Tooltip>
+
 
                 {hasSections && (
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button
-                                className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
-                                title="View Syllabi"
-                            >
-                                <Binoculars className="h-4 w-4" />
-                            </button>
-                        </DropdownMenuTrigger>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button" variant="ghost"
+                                        className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                                    >
+                                        <Binoculars className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="ml-1">
+                                Preview Syllabus
+                            </TooltipContent>
+                        </Tooltip>
                         <DropdownMenuContent align="start" side="right" className="min-w-52">
                             {linkedSections.map(sec => (
                                 <DropdownMenuGroup key={sec.id}>
@@ -149,7 +173,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                             <DropdownMenuItem asChild>
                                                 <a
                                                     href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}?mode=complete`}
-                                                    target="_blank"
+                                                    target="_self"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
                                                 >
@@ -160,7 +184,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                             <DropdownMenuItem asChild>
                                                 <a
                                                     href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
-                                                    target="_blank"
+                                                    target="_self"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
                                                 >
@@ -173,7 +197,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                         <DropdownMenuItem asChild>
                                             <a
                                                 href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
-                                                target="_blank"
+                                                target="_self"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 cursor-pointer"
                                             >
@@ -208,13 +232,20 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                 )}
 
                 {hasSections && (
-                    <button
-                        className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
-                        onClick={onOpenStudentProgress}
-                        title="Student Progress"
-                    >
-                        <ChartBar className="h-4 w-4" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                type="button" variant="ghost"
+                                className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                                onClick={onOpenStudentProgress}
+                            >
+                                <ChartBar className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="ml-1">
+                            Student Progress
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
 
@@ -247,7 +278,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
 
 // ── Segment form ──────────────────────────────────────────────────────────────
 
-function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelete, isSaving }: {
+function SegmentForm({ mode, segment, locked, availableSections, onSave, isSaving }: {
     mode: 'add' | 'edit'
     segment?: SegmentWithBlocks
     locked?: boolean
@@ -412,16 +443,6 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelet
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Segment' : 'Save Segment'}
                     </Button>
-                    {mode !== 'add' && (
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={onDelete}
-                            className="w-full rounded-none h-9 text-xs"
-                        >
-                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Segment
-                        </Button>
-                    )}
                 </div>
             )}
         </form>
@@ -556,7 +577,7 @@ export function SegmentColumn({
     const deleteConfirmSegment = segments.find(s => s.id === deleteConfirmId)
 
     return (
-        <div className="w-full md:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
+        <div className="w-full md:w-64 xl:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
 
             {col2Mode === 'segmentList' && (
                 <>
@@ -653,14 +674,15 @@ export function SegmentColumn({
 
             {col2Mode === 'segmentEdit' && editingSegmentId && (
                 <>
-                    <ColHeader title="Edit Segment" subtitle="" onBack={() => setCol2Mode('segmentList')} />
+                    <ColHeader title="Edit Segment" subtitle="" onBack={() => setCol2Mode('segmentList')}>
+                        {!locked && <DeleteButton onClick={() => setDeleteConfirmId(editingSegmentId)} />}
+                    </ColHeader>
                     <SegmentForm
                         mode="edit"
                         segment={editingSegment}
                         locked={locked}
                         availableSections={availableSections}
                         onSave={body => onUpdateSegment(editingSegmentId, body)}
-                        onDelete={() => { setDeleteConfirmId(editingSegmentId); setCol2Mode('segmentList') }}
                         isSaving={isUpdating}
                     />
                 </>

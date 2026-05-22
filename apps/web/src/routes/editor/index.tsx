@@ -132,7 +132,7 @@ export default function EditorPage() {
             toast.success('Syllabus deleted')
             if (syllabusId === id) navigate('/editor')
         },
-        onError: () => toast.error('Failed to delete'),
+        onError: () => toast.error('Failed to delete syllabus'),
     })
 
     const lockMutation = useMutation({
@@ -141,9 +141,9 @@ export default function EditorPage() {
         onSuccess: (_, { syllabusId, locked: l }) => {
             void qc.invalidateQueries({ queryKey: ['syllabi'] })
             void qc.invalidateQueries({ queryKey: ['syllabus', syllabusId] })
-            toast.success(l ? 'Locked' : 'Unlocked')
+            toast.success('Syllabus ' + (l ? 'Locked' : 'Unlocked'))
         },
-        onError: () => toast.error('Failed to update lock'),
+        onError: () => toast.error('Failed to update syllabus lock status'),
     })
 
     // ── Mutations: Grading Scales ─────────────────────────────────────────────
@@ -154,7 +154,7 @@ export default function EditorPage() {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['grading-scales'] })
             toast.success('Grading scale created')
-            setCol1Mode('grading-scales')
+            setCol1Mode('list')
         },
         onError: () => toast.error('Failed to create grading scale'),
     })
@@ -165,7 +165,7 @@ export default function EditorPage() {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['grading-scales'] })
             toast.success('Grading scale saved')
-            setCol1Mode('grading-scales')
+            setCol1Mode('list')
         },
         onError: () => toast.error('Failed to save grading scale'),
     })
@@ -231,43 +231,9 @@ export default function EditorPage() {
         },
         onError: (_err, _vars, context) => {
             if (context?.previous) qc.setQueryData(['syllabus', id], context.previous)
-            toast.error('Failed to reorder')
+            toast.error('Failed to reorder segments')
         },
         onSettled: () => void qc.invalidateQueries({ queryKey: ['syllabus', id] }),
-    })
-
-    // ── Mutations: Blocks ─────────────────────────────────────────────────────
-
-    const addBlockMutation = useMutation({
-        mutationFn: ({ segId, body }: { segId: string; body: Record<string, unknown> }) =>
-            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments/${segId}/blocks`, { method: 'POST', body: JSON.stringify(body) }),
-        onSuccess: res => {
-            invalidate()
-            toast.success('Block added')
-            setSelectedBlockId(res.data.id)
-            setNewBlockType(null)
-            setCol3Mode('editBlock')
-        },
-        onError: () => toast.error('Failed to add block'),
-    })
-
-    const updateBlockMutation = useMutation({
-        mutationFn: ({ segId, blockId, body }: { segId: string; blockId: string; body: Record<string, unknown> }) =>
-            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'PUT', body: JSON.stringify(body) }),
-        onSuccess: () => { invalidate(); toast.success('Block saved') },
-        onError: () => toast.error('Failed to save block'),
-    })
-
-    const deleteBlockMutation = useMutation({
-        mutationFn: ({ segId, blockId }: { segId: string; blockId: string }) =>
-            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'DELETE' }),
-        onSuccess: () => {
-            invalidate()
-            toast.success('Block deleted')
-            setSelectedBlockId(null)
-            setCol3Mode('blocks')
-        },
-        onError: () => toast.error('Failed to delete block'),
     })
 
     const copySegmentMutation = useMutation({
@@ -286,6 +252,40 @@ export default function EditorPage() {
             setCol3Mode('blocks')
         },
         onError: () => toast.error('Failed to copy segment'),
+    })
+
+    // ── Mutations: Blocks ─────────────────────────────────────────────────────
+
+    const addBlockMutation = useMutation({
+        mutationFn: ({ segId, body }: { segId: string; body: Record<string, unknown> }) =>
+            apiFetch<{ data: { id: string } }>(`/editor/syllabi/${id}/segments/${segId}/blocks`, { method: 'POST', body: JSON.stringify(body) }),
+        onSuccess: res => {
+            invalidate()
+            toast.success('Block added')
+            setSelectedBlockId(res.data.id)
+            setNewBlockType(null)
+            setCol3Mode('blocks')
+        },
+        onError: () => toast.error('Failed to add block'),
+    })
+
+    const updateBlockMutation = useMutation({
+        mutationFn: ({ segId, blockId, body }: { segId: string; blockId: string; body: Record<string, unknown> }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'PUT', body: JSON.stringify(body) }),
+        onSuccess: () => { invalidate(); toast.success('Block saved'); setCol3Mode('blocks') },
+        onError: () => toast.error('Failed to save block'),
+    })
+
+    const deleteBlockMutation = useMutation({
+        mutationFn: ({ segId, blockId }: { segId: string; blockId: string }) =>
+            apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'DELETE' }),
+        onSuccess: () => {
+            invalidate()
+            toast.success('Block deleted')
+            setSelectedBlockId(null)
+            setCol3Mode('blocks')
+        },
+        onError: () => toast.error('Failed to delete block'),
     })
 
     const copyBlockMutation = useMutation({
@@ -326,7 +326,7 @@ export default function EditorPage() {
         },
         onError: (_err, _vars, context) => {
             if (context?.previous) qc.setQueryData(['syllabus', id], context.previous)
-            toast.error('Failed to reorder')
+            toast.error('Failed to reorder blocks')
         },
         onSettled: () => void qc.invalidateQueries({ queryKey: ['syllabus', id] }),
     })

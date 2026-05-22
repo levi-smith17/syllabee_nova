@@ -17,53 +17,134 @@ export const handler = async (
             return toApiGatewayResponse(notFound('Section not found'))
         }
 
-        // Resolve courseId and termId in parallel by scanning for matching codes
-        const [courseRes, termRes] = await Promise.all([
-            dynamo.send(new ScanCommand({
+        const upperCourse = courseCode.toUpperCase()
+        const upperTerm = termCode.toUpperCase()
+
+        // ── Resolve courseId ──────────────────────────────────────────────────
+        let courseId: string | undefined
+        let coursePk: string | undefined
+
+        const courseGsi = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            IndexName: 'gsi1',
+            KeyConditionExpression: 'gsi1pk = :g1pk AND gsi1sk = :g1sk',
+            ExpressionAttributeValues: { ':g1pk': 'TYPE#COURSE', ':g1sk': upperCourse },
+            ProjectionExpression: 'pk',
+            Limit: 1,
+        }))
+
+        if (courseGsi.Items?.length) {
+            coursePk = courseGsi.Items[0].pk as string
+        } else {
+            const courseScan = await dynamo.send(new ScanCommand({
                 TableName: TABLE_NAME,
                 FilterExpression: 'begins_with(pk, :prefix) AND sk = :sk AND #code = :code',
                 ExpressionAttributeNames: { '#code': 'code' },
-                ExpressionAttributeValues: { ':prefix': 'COURSE#', ':sk': 'METADATA', ':code': courseCode },
+                ExpressionAttributeValues: { ':prefix': 'COURSE#', ':sk': 'METADATA', ':code': upperCourse },
                 ProjectionExpression: 'pk',
-            })),
-            dynamo.send(new ScanCommand({
+            }))
+            coursePk = courseScan.Items?.[0]?.pk as string | undefined
+        }
+
+        if (!coursePk) return toApiGatewayResponse(notFound('Section not found'))
+        courseId = coursePk.replace('COURSE#', '')
+
+        // ── Resolve termId + termName ─────────────────────────────────────────
+        let termId: string | undefined
+        let termName: string | undefined
+
+        const termGsi = await dynamo.send(new QueryCommand({
+            TableName: TABLE_NAME,
+            IndexName: 'gsi1',
+            KeyConditionExpression: 'gsi1pk = :g1pk AND gsi1sk = :g1sk',
+            ExpressionAttributeValues: { ':g1pk': 'TYPE#TERM', ':g1sk': upperTerm },
+            Limit: 1,
+        }))
+
+        if (termGsi.Items?.length) {
+            const t = termGsi.Items[0]
+            termId = (t.pk as string).replace('TERM#', '')
+            termName = t.name as string
+        } else {
+            const termScan = await dynamo.send(new ScanCommand({
                 TableName: TABLE_NAME,
                 FilterExpression: 'begins_with(pk, :prefix) AND sk = :sk AND #code = :code',
                 ExpressionAttributeNames: { '#code': 'code', '#name': 'name' },
-                ExpressionAttributeValues: { ':prefix': 'TERM#', ':sk': 'METADATA', ':code': termCode },
+                ExpressionAttributeValues: { ':prefix': 'TERM#', ':sk': 'METADATA', ':code': upperTerm },
                 ProjectionExpression: 'pk, #name',
-            })),
-        ])
+            }))
+            const t = termScan.Items?.[0]
+            if (t) {
+                termId = (t.pk as string).replace('TERM#', '')
+                termName = t.name as string
+            }
+        }
 
-        const courseItem = courseRes.Items?.[0]
-        const termItem = termRes.Items?.[0]
-        if (!courseItem || !termItem) return toApiGatewayResponse(notFound('Section not found'))
+        if (!termId) return toApiGatewayResponse(notFound('Section not found'))
 
-        const courseId = (courseItem.pk as string).replace('COURSE#', '')
-        const termId = (termItem.pk as string).replace('TERM#', '')
+        // ── Resolve sectionId ─────────────────────────────────────────────────
+        let sectionItem: Record<string, unknown> | undefined
 
-        // Find the section matching courseId + termId + sectionCode
-        const sectionRes = await dynamo.send(new ScanCommand({
+        const sectionGsi = await dynamo.send(new QueryCommand({
             TableName: TABLE_NAME,
-            FilterExpression: 'begins_with(pk, :prefix) AND sk = :sk AND courseId = :cid AND termId = :tid AND sectionCode = :sc AND isActive = :active',
+            IndexName: 'gsi1',
+            KeyConditionExpression: 'gsi1pk = :g1pk AND gsi1sk = :g1sk',
+            FilterExpression: 'isActive = :active',
             ExpressionAttributeValues: {
-                ':prefix': 'SECTION#',
-                ':sk': 'METADATA',
-                ':cid': courseId,
-                ':tid': termId,
-                ':sc': sectionCode,
+                ':g1pk': `SECTION_LOOKUP#${courseId}#${termId}`,
+                ':g1sk': sectionCode,
                 ':active': true,
             },
+            Limit: 1,
         }))
 
-        const sectionItem = sectionRes.Items?.[0]
+        if (sectionGsi.Items?.length) {
+            sectionItem = sectionGsi.Items[0] as Record<string, unknown>
+        } else {
+            const sectionScan = await dynamo.send(new ScanCommand({
+                TableName: TABLE_NAME,
+                FilterExpression: 'begins_with(pk, :prefix) AND sk = :sk AND courseId = :cid AND termId = :tid AND sectionCode = :sc AND isActive = :active',
+                ExpressionAttributeValues: {
+                    ':prefix': 'SECTION#',
+                    ':sk': 'METADATA',
+                    ':cid': courseId,
+                    ':tid': termId,
+                    ':sc': sectionCode,
+                    ':active': true,
+                },
+            }))
+            sectionItem = sectionScan.Items?.[0] as Record<string, unknown> | undefined
+        }
+
         if (!sectionItem) return toApiGatewayResponse(notFound('Section not found'))
 
         const sectionId = (sectionItem.pk as string).replace('SECTION#', '')
-        const masterSyllabusId = sectionItem.masterSyllabusId as string | undefined
+
+        // ── Resolve masterSyllabusId ──────────────────────────────────────────
+        let masterSyllabusId = sectionItem.masterSyllabusId as string | undefined
+
+        if (!masterSyllabusId) {
+            // Fall back: find a syllabus via a segment that lists this sectionId
+            const segScan = await dynamo.send(new ScanCommand({
+                TableName: TABLE_NAME,
+                FilterExpression: 'begins_with(pk, :prefix) AND begins_with(sk, :skPrefix) AND contains(#sections, :sid)',
+                ExpressionAttributeNames: { '#sections': 'sections' },
+                ExpressionAttributeValues: {
+                    ':prefix': 'SYLLABUS#',
+                    ':skPrefix': 'SEG#',
+                    ':sid': sectionId,
+                },
+                ProjectionExpression: 'pk',
+                Limit: 1,
+            }))
+            if (segScan.Items?.length) {
+                masterSyllabusId = (segScan.Items[0].pk as string).replace('SYLLABUS#', '')
+            }
+        }
+
         if (!masterSyllabusId) return toApiGatewayResponse(notFound('No syllabus assigned to this section'))
 
-        // Fetch course name, syllabus data, and branding in parallel
+        // ── Fetch course name, syllabus data, and branding in parallel ────────
         const [courseDetail, syllabusRes, brandingItem] = await Promise.all([
             dynamo.send(new GetCommand({
                 TableName: TABLE_NAME,
@@ -152,7 +233,7 @@ export const handler = async (
                 termCode,
                 sectionCode,
                 courseName: (courseDetail.Item?.name as string) ?? '',
-                termName: (termItem['name'] as string) ?? '',
+                termName: termName ?? '',
                 instructorId: sectionItem.instructorId as string,
             },
             segments: applicable,

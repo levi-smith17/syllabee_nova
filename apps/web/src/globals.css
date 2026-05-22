@@ -16,7 +16,7 @@
     --muted-foreground: 0 0% 45%;
     --accent: 0 0% 96%;
     --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 45%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
@@ -51,7 +51,7 @@
     --muted-foreground: 0 0% 64%;
     --accent: 0 0% 15%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 352 95% 52%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 15%;
     --input: 0 0% 15%;
@@ -131,7 +131,9 @@
     background: var(--scrollbar-thumb-hover);
   }
 
-  /* ── Sonner toast overrides ─────────────────────────────── */
+  /* ==========================================
+   SUCCESS TOASTS (Cyan)
+   ========================================== */
   [data-sonner-toast][data-type='success'] {
     background: hsl(190 70% 95%) !important;
     border-color: hsl(190 70% 72%) !important;
@@ -148,4 +150,88 @@
   .dark [data-sonner-toast][data-type='success'] [data-icon] svg {
     color: hsl(185 96% 72%) !important;
   }
+  /* ==========================================
+   INFO TOASTS (Modern Indigo)
+   ========================================== */
+  [data-sonner-toast][data-type='info'] {
+    background: hsl(235 70% 96%) !important;
+    border-color: hsl(235 70% 78%) !important;
+    color: hsl(235 100% 20%) !important;
+  }
+  [data-sonner-toast][data-type='info'] [data-icon] svg {
+    color: hsl(235 100% 35%) !important;
+  }
+  .dark [data-sonner-toast][data-type='info'] {
+    background: hsl(235 40% 15%) !important;
+    border-color: hsl(235 45% 35%) !important;
+    color: hsl(235 96% 90%) !important;
+  }
+  .dark [data-sonner-toast][data-type='info'] [data-icon] svg {
+    color: hsl(235 96% 76%) !important;
+  }
+
+  /* ==========================================
+     ERROR TOASTS (Matches --destructive variable)
+     ========================================== */
+  [data-sonner-toast][data-type='error'] {
+    background: hsl(0 100% 97%) !important;
+    border-color: hsl(0 84% 80%) !important;
+    color: hsl(0 84% 25%) !important;
+  }
+  [data-sonner-toast][data-type='error'] [data-icon] svg {
+    color: hsl(0 84% 45%) !important;
+  }
+  .dark [data-sonner-toast][data-type='error'] {
+    background: hsl(352 45% 12%) !important;
+    border-color: hsl(352 75% 32%) !important;
+    color: hsl(352 100% 92%) !important;
+  }
+  .dark [data-sonner-toast][data-type='error'] [data-icon] svg {
+    color: hsl(352 95% 52%) !important;
+  }
+
+  /* ==========================================
+     WARNING TOASTS (Matches --primary gold/amber)
+     ========================================== */
+  [data-sonner-toast][data-type='warning'] {
+    background: hsl(43 100% 95%) !important;
+    border-color: hsl(43 96% 75%) !important;
+    color: hsl(43 100% 18%) !important;
+  }
+  [data-sonner-toast][data-type='warning'] [data-icon] svg {
+    color: hsl(43 96% 35%) !important;
+  }
+  .dark [data-sonner-toast][data-type='warning'] {
+    background: hsl(43 50% 11%) !important;
+    border-color: hsl(43 70% 28%) !important;
+    color: hsl(43 96% 85%) !important;
+  }
+  .dark [data-sonner-toast][data-type='warning'] [data-icon] svg {
+    color: hsl(43 96% 52%) !important;
+  }
+
+  /* ==========================================
+     LOADING & DEFAULT TOASTS (Matches neutral slates)
+     ========================================== */
+  [data-sonner-toast][data-type='default'],
+  [data-sonner-toast][data-type='loading'] {
+    background: hsl(0 0% 100%) !important;
+    border-color: hsl(0 0% 90%) !important;
+    color: hsl(0 0% 9%) !important;
+  }
+  [data-sonner-toast][data-type='default'] [data-icon] svg,
+  [data-sonner-toast][data-type='loading'] [data-icon] svg {
+    color: hsl(0 0% 45%) !important;
+  }
+  .dark [data-sonner-toast][data-type='default'],
+  .dark [data-sonner-toast][data-type='loading'] {
+    background: hsl(0 0% 8%) !important;
+    border-color: hsl(0 0% 15%) !important;
+    color: hsl(0 0% 98%) !important;
+  }
+  .dark [data-sonner-toast][data-type='default'] [data-icon] svg,
+  .dark [data-sonner-toast][data-type='loading'] [data-icon] svg {
+    color: hsl(0 0% 64%) !important;
+  }
+
 }

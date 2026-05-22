@@ -23,14 +23,20 @@ export const handler = async (
         const { courseId, termId, sectionCode, formatId, instructorId, roomNumber, meetingDays, meetingTime, isActive } = body
         const item = existing.Item
 
+        const newCourseId = courseId !== undefined ? String(courseId) : (item.courseId as string)
+        const newTermId = termId !== undefined ? String(termId) : (item.termId as string)
+        const newSectionCode = sectionCode !== undefined ? String(sectionCode) : (item.sectionCode as string)
+
         await dynamo.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { pk: `SECTION#${id}`, sk: 'METADATA' },
-            UpdateExpression: 'SET courseId = :courseId, termId = :termId, sectionCode = :sectionCode, formatId = :formatId, instructorId = :instructorId, roomNumber = :roomNumber, meetingDays = :meetingDays, meetingTime = :meetingTime, isActive = :isActive',
+            UpdateExpression: 'SET courseId = :courseId, termId = :termId, sectionCode = :sectionCode, gsi1pk = :g1pk, gsi1sk = :g1sk, formatId = :formatId, instructorId = :instructorId, roomNumber = :roomNumber, meetingDays = :meetingDays, meetingTime = :meetingTime, isActive = :isActive',
             ExpressionAttributeValues: {
-                ':courseId': courseId !== undefined ? String(courseId) : item.courseId,
-                ':termId': termId !== undefined ? String(termId) : item.termId,
-                ':sectionCode': sectionCode !== undefined ? String(sectionCode) : item.sectionCode,
+                ':courseId': newCourseId,
+                ':termId': newTermId,
+                ':sectionCode': newSectionCode,
+                ':g1pk': `SECTION_LOOKUP#${newCourseId}#${newTermId}`,
+                ':g1sk': newSectionCode,
                 ':formatId': formatId !== undefined ? formatId : item.formatId,
                 ':instructorId': instructorId !== undefined ? instructorId : item.instructorId,
                 ':roomNumber': roomNumber !== undefined ? roomNumber : item.roomNumber,
