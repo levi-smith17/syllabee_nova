@@ -1,6 +1,5 @@
 import React from 'react'
 import { ChevronDown, X } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { EditorSection } from '@syllabee/types'
 
@@ -19,6 +18,17 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
     const triggerRef = React.useRef<HTMLButtonElement>(null)
     const dropdownRef = React.useRef<HTMLDivElement>(null)
 
+    const sortedSections = React.useMemo(() =>
+        [...sections].sort((a, b) => {
+            if (b.termCode < a.termCode) return -1
+            if (b.termCode > a.termCode) return 1
+            if (a.courseCode < b.courseCode) return -1
+            if (a.courseCode > b.courseCode) return 1
+            if (a.sectionCode < b.sectionCode) return -1
+            if (a.sectionCode > b.sectionCode) return 1
+            return 0
+        }), [sections])
+
     React.useEffect(() => {
         if (!open) return
         function handle(e: MouseEvent) {
@@ -31,8 +41,8 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
         return () => document.removeEventListener('mousedown', handle)
     }, [open])
 
-    const selectedSections = sections.filter(s => value.includes(s.id))
-    const unselectedSections = sections.filter(s => !value.includes(s.id))
+    const selectedSections = sortedSections.filter(s => value.includes(s.id))
+    const unselectedSections = sortedSections.filter(s => !value.includes(s.id))
     const filtered = search
         ? unselectedSections.filter(s => sectionLabel(s).toLowerCase().includes(search.toLowerCase()))
         : unselectedSections
@@ -42,7 +52,7 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
 
     const triggerLabel = value.length === 0
         ? 'No sections — shared across all'
-        : `${value.length} of ${sections.length} section${sections.length !== 1 ? 's' : ''} selected`
+        : `${value.length} of ${sortedSections.length} section${sortedSections.length !== 1 ? 's' : ''} selected`
 
     return (
         <div className="relative">
@@ -85,7 +95,7 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
                                 onClick={() => { select(sec.id) }}
                                 className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors"
                             >
-                                <Checkbox checked={false} className="pointer-events-none shrink-0" />
+                                <div className="h-4 w-4 shrink-0 rounded-sm border border-primary" />
                                 {sectionLabel(sec)}
                             </button>
                         ))

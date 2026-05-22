@@ -60,6 +60,7 @@ export const handler = async (
                     isVisible: seg.isVisible,
                     sortOrder: seg.sortOrder,
                     effectiveTerm: seg.effectiveTerm,
+                    sections: seg.sections ?? [],
                     blocks,
                 }
             })
