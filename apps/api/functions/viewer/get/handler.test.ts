@@ -39,6 +39,8 @@ const blkItem = {
 }
 const brandingItem = { pk: 'SETTINGS', sk: 'BRANDING', institutionName: 'Edison State' }
 
+// Happy-path mocks: GSI hits for course, term, section (no scan fallbacks needed).
+// Call order: courseGsi, termGsi, sectionGsi, [parallel] courseDetail + syllabusRes + branding
 function setupMocks({
     hasCourse = true,
     hasTerm = true,
@@ -48,10 +50,11 @@ function setupMocks({
     sectionSpecific = false,
 } = {}) {
     mockSend
-        // parallel: courseRes + termRes
+        // courseGsi
         .mockResolvedValueOnce({ Items: hasCourse ? [courseItem] : [] })
+        // termGsi
         .mockResolvedValueOnce({ Items: hasTerm ? [termItem] : [] })
-        // sectionRes
+        // sectionGsi
         .mockResolvedValueOnce({ Items: hasSection ? [sectionItem] : [] })
         // parallel: courseDetail + syllabusRes + brandingItem
         .mockResolvedValueOnce({ Item: { name: 'Introduction to Programming' } })
@@ -74,25 +77,33 @@ describe('viewer/get', () => {
     })
 
     it('returns 404 when course not found', async () => {
-        mockSend.mockResolvedValueOnce({ Items: [] }).mockResolvedValueOnce({ Items: [termItem] })
+        // courseGsi → empty, courseScan → empty → 404
+        mockSend
+            .mockResolvedValueOnce({ Items: [] })
+            .mockResolvedValueOnce({ Items: [] })
         const result = await handler(makeEvent('CIS-121S', '2025SS', '801SS')) as any
         expect(result.statusCode).toBe(404)
     })
 
     it('returns 404 when section not found', async () => {
+        // courseGsi → found, termGsi → found, sectionGsi → empty, sectionScan → empty → 404
         mockSend
             .mockResolvedValueOnce({ Items: [courseItem] })
             .mockResolvedValueOnce({ Items: [termItem] })
+            .mockResolvedValueOnce({ Items: [] })
             .mockResolvedValueOnce({ Items: [] })
         const result = await handler(makeEvent('CIS-121S', '2025SS', '801SS')) as any
         expect(result.statusCode).toBe(404)
     })
 
     it('returns 404 when section has no masterSyllabusId', async () => {
+        // courseGsi → found, termGsi → found, sectionGsi → found (no masterSyllabusId),
+        // segmentScan fallback → empty → 404
         mockSend
             .mockResolvedValueOnce({ Items: [courseItem] })
             .mockResolvedValueOnce({ Items: [termItem] })
             .mockResolvedValueOnce({ Items: [{ ...sectionItem, masterSyllabusId: undefined }] })
+            .mockResolvedValueOnce({ Items: [] })
         const result = await handler(makeEvent('CIS-121S', '2025SS', '801SS')) as any
         expect(result.statusCode).toBe(404)
     })
