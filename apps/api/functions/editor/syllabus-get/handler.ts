@@ -46,6 +46,7 @@ export const handler = async (
                         isVisible: b.isVisible,
                         sortOrder: b.sortOrder,
                         printHeading: b.printHeading,
+                        printGroup: b.printGroup,
                         content: b.content ?? {},
                         published: b.published ?? false,
                         permalink: b.permalink,

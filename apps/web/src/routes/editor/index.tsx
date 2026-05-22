@@ -432,6 +432,11 @@ export default function EditorPage() {
                         copySegmentMutation.mutate({ sourceSyllabusId, sourceSegmentId, sections })
                     }
                     isCopyingSegment={copySegmentMutation.isPending}
+                    onOpenStudentProgress={segId => {
+                        setSelectedSegmentId(segId)
+                        setSelectedBlockId(null)
+                        setCol3Mode('studentProgress')
+                    }}
                     mobileBack={isMobile ? () => {
                         setCol2Mode('hidden')
                         setSelectedSegmentId(null)
@@ -455,10 +460,6 @@ export default function EditorPage() {
                     onAddBlock={(segId, body) => addBlockMutation.mutate({ segId, body })}
                     onUpdateBlock={(segId, blockId, body) => updateBlockMutation.mutate({ segId, blockId, body })}
                     onDeleteBlock={(segId, blockId) => deleteBlockMutation.mutate({ segId, blockId })}
-                    onToggleBlockVisible={(segId, blockId) => {
-                        const block = selectedSegment.blocks.find(b => b.id === blockId)
-                        if (block && !locked) updateBlockMutation.mutate({ segId, blockId, body: { isVisible: !block.isVisible } })
-                    }}
                     onReorderBlocks={(segId, orderedIds) => reorderBlocksMutation.mutate({ segId, orderedIds })}
                     isAdding={addBlockMutation.isPending}
                     isUpdating={updateBlockMutation.isPending}

@@ -11,7 +11,7 @@ import type { BlockType } from '@syllabee/types'
 
 export type Col1Mode = 'list' | 'add' | 'edit' | 'grading-scales' | 'grading-scale-add' | 'grading-scale-edit'
 export type Col2Mode = 'hidden' | 'segmentList' | 'segmentAdd' | 'segmentEdit'
-export type Col3Mode = 'blocks' | 'picker' | 'addBlock' | 'editBlock'
+export type Col3Mode = 'blocks' | 'picker' | 'addBlock' | 'editBlock' | 'studentProgress'
 
 // ── Block metadata ────────────────────────────────────────────────────────────
 
@@ -37,14 +37,14 @@ export function uid() { return Math.random().toString(36).slice(2) }
 export function newBlockContent(type: BlockType): Record<string, unknown> {
     switch (type) {
         case 'content_block':             return { html: '' }
-        case 'details_block':             return { summary: '', html: '' }
-        case 'video_block':               return { url: '', caption: '' }
-        case 'list_block':                return { style: 'bullet', items: [] }
-        case 'table_block':               return { rows: [{ id: uid(), cells: [{ value: '' }] }] }
-        case 'grade_determination_block': return { rows: [], gradingScaleId: '' }
+        case 'details_block':             return { summary: '', sections: [{ id: uid(), html: '' }] }
         case 'file_block':                return { attachments: [] }
+        case 'grade_determination_block': return { rows: [], gradingScaleId: '' }
+        case 'list_block':                return { levelStyles: { '1': 'disc', '2': 'circle', '3': 'square', '4': 'disc', '5': 'circle' }, items: [] }
         case 'response_block':            return { questions: [] }
         case 'schedule_block':            return { units: [] }
+        case 'table_block':               return { rows: [{ id: uid(), cells: [{ value: '' }] }] }
+        case 'video_block':               return { url: '', caption: '' }
         default:                          return {}
     }
 }
@@ -71,7 +71,7 @@ export function ColHeader({ title, subtitle, onBack, icon, children }: {
             {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 flex flex-col">
                 <span className="text-sm font-semibold truncate">{title}</span>
-                <span className="text-xs text-muted truncate">{subtitle}</span>
+                <span className="text-xs text-black/60 truncate">{subtitle}</span>
             </span>
             {children}
         </div>

@@ -1,8 +1,8 @@
 import React from 'react'
-import { Eye, EyeOff, Loader2, Trash2, Plus, GripVertical, FileText, Copy } from 'lucide-react'
+import { Loader2, Trash2, Plus, GripVertical, FileText, Copy, Pencil, MoreHorizontal, Heading3, Heading4, Heading5, Heading6, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
-    useSensor, useSensors, type DragEndEvent,
+    useSensor, useSensors, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import {
     SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
@@ -12,10 +12,11 @@ import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RichTextEditor } from '@/components/editor/rich-text-editor'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { ColHeader, AddButton, BLOCK_META, BLK_HEADING_OPTS, Col3Mode, uid, newBlockContent } from './shared'
 import { ContentLibraryDialog } from './content-library'
@@ -23,55 +24,245 @@ import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, BlockType, Grading
 
 type SegmentWithBlocks = SyllabusSegment & { blocks: SyllabusBlock[] }
 
+const BLOCK_HEADING_ICONS: Record<number, React.ElementType> = {
+    3: Heading3, 4: Heading4, 5: Heading5, 6: Heading6,
+}
+
+const BLOCK_HEADING_DESCS: Record<number, string> = {
+    3: 'Top-level block — a major content heading within a segment.',
+    4: 'Sub-heading — indented one level under an H3 block.',
+    5: 'Nested sub-heading — indented two levels under an H3 block.',
+    6: 'Deepest heading — indented three levels under an H3 block.',
+}
+
 // ── Sortable block row ────────────────────────────────────────────────────────
 
-function SortableBlockRow({ block, selected, onSelect, onToggleVisible }: {
+function SortableBlockRow({ block, selected, onEdit, onDelete, draggingHeading }: {
     block: SyllabusBlock
     selected: boolean
-    onSelect: () => void
-    onToggleVisible: () => void
+    onEdit: () => void
+    onDelete: () => void
+    draggingHeading: number | null
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id })
-    const style = { transform: CSS.Transform.toString(transform), transition }
-    const { label, Icon } = BLOCK_META[block.type] ?? { label: block.type, Icon: FileText }
+    const { Icon } = BLOCK_META[block.type] ?? { label: block.type, Icon: FileText }
+
+    // Clamp to valid block heading range (H3–H6) regardless of stored value
+    const storedHeading = Math.max(3, Math.min(6, block.printHeading))
+    const headingLevel = isDragging && draggingHeading != null ? draggingHeading : storedHeading
+    const HeadingIcon = BLOCK_HEADING_ICONS[headingLevel] ?? Heading3
+    const snappedTransform = isDragging && draggingHeading != null && transform
+        ? { ...transform, x: (draggingHeading - storedHeading) * 16 }
+        : transform
+    const style = {
+        transform: CSS.Transform.toString(snappedTransform),
+        transition,
+        marginLeft: `${(storedHeading - 3) * 16}px`,
+    }
 
     return (
         <div
             ref={setNodeRef}
             style={style}
             className={cn(
-                'flex items-center gap-2 px-3 py-2.5 border cursor-pointer hover:bg-muted/40 transition-colors',
+                'flex items-stretch border transition-colors',
                 selected ? 'border-primary bg-muted' : 'border-border',
                 isDragging && 'opacity-50 z-10',
             )}
-            onClick={onSelect}
         >
-            <button
-                className="p-0.5 cursor-grab text-muted-foreground hover:text-foreground shrink-0 touch-none"
-                {...attributes}
-                {...listeners}
-                onClick={e => e.stopPropagation()}
-                title="Drag to reorder"
-            >
-                <GripVertical className="h-4 w-4" />
-            </button>
-            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{block.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                    {label}
-                    {!block.isVisible && <span className="ml-1.5 opacity-60">(hidden)</span>}
-                </p>
+            {/* Left action bar */}
+            <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
+                <button
+                    className="p-1.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
+                    {...attributes}
+                    {...listeners}
+                    title="Drag to reorder; move left/right to change heading level"
+                >
+                    <GripVertical className="h-4 w-4" />
+                </button>
+                <Icon className="h-4 w-4 text-black my-0.5 shrink-0" />
+                <HeadingIcon className="h-4 w-4 text-black my-0.5 shrink-0" />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className="p-1.5 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="right">
+                        <DropdownMenuItem onClick={onEdit}>
+                            <Pencil className="h-4 w-4 mr-2" />Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="text-red-500 focus:text-red-600 focus:bg-red-500/10"
+                            onClick={onDelete}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />Delete
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
-            <button
-                className="p-1 text-muted-foreground hover:text-foreground rounded-sm hover:bg-muted transition-colors shrink-0"
-                onClick={e => { e.stopPropagation(); onToggleVisible() }}
-                title={block.isVisible ? 'Hide' : 'Show'}
-            >
-                {block.isVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            </button>
+
+            {/* Content area — not clickable; use ⋯ → Edit to open the form */}
+            <div className="flex-1 min-w-0 px-3 py-2.5">
+                <p className="text-xs font-semibold mb-1.5">{block.name}</p>
+                <BlockContentPreview type={block.type} content={block.content} />
+            </div>
         </div>
     )
+}
+
+// ── Block content preview (read-only) ────────────────────────────────────────
+
+function BlockContentPreview({ type, content }: {
+    type: BlockType
+    content: Record<string, unknown>
+}) {
+    switch (type) {
+        case 'content_block':
+            return (content.html as string)
+                ? <div className="prose prose-sm max-w-none text-xs [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: content.html as string }} />
+                : <p className="text-xs text-muted-foreground italic">No content.</p>
+
+        case 'details_block': {
+            type Section = { id: string; html: string }
+            const sections = content.sections as Section[] | undefined
+            const legacyHtml = content.html as string | undefined
+            const hasContent = sections ? sections.some(s => s.html) : !!legacyHtml
+            return (
+                <div className="space-y-1">
+                    {(content.summary as string) && <p className="text-xs font-medium">{content.summary as string}</p>}
+                    {sections ? (
+                        hasContent
+                            ? sections.filter(s => s.html).map((s, i) => (
+                                <div key={i} className="prose prose-sm max-w-none text-xs [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: s.html }} />
+                            ))
+                            : <p className="text-xs text-muted-foreground italic">No content.</p>
+                    ) : legacyHtml ? (
+                        <div className="prose prose-sm max-w-none text-xs [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: legacyHtml }} />
+                    ) : (
+                        <p className="text-xs text-muted-foreground italic">No content.</p>
+                    )}
+                </div>
+            )
+        }
+
+        case 'video_block':
+            return (
+                <div className="space-y-0.5">
+                    {(content.url as string)
+                        ? <p className="text-xs text-primary truncate">{content.url as string}</p>
+                        : <p className="text-xs text-muted-foreground italic">No URL.</p>}
+                    {(content.caption as string) && <p className="text-xs text-muted-foreground">{content.caption as string}</p>}
+                </div>
+            )
+
+        case 'list_block': {
+            type PItem = { id: string; text: string; level?: number }
+            const items = (content.items as PItem[]) ?? []
+            if (items.length === 0) return <p className="text-xs text-muted-foreground italic">No items.</p>
+            const isNew = !!content.levelStyles
+            const levelStyles = (content.levelStyles as Record<string, string>) ?? {}
+            const legacyStyle = (content.style as string) ?? 'bullet'
+            if (isNew) {
+                return (
+                    <ul className="pl-3 space-y-0.5">
+                        {items.map(it => (
+                            <li key={it.id} className="text-xs" style={{ listStyleType: levelStyles[String(it.level ?? 1)] ?? 'disc', marginLeft: `${((it.level ?? 1) - 1) * 12}px` }}>
+                                {it.text}
+                            </li>
+                        ))}
+                    </ul>
+                )
+            }
+            return legacyStyle === 'numbered'
+                ? <ol className="list-decimal list-inside space-y-0.5">{items.map(it => <li key={it.id} className="text-xs">{it.text}</li>)}</ol>
+                : <ul className="list-disc list-inside space-y-0.5">{items.map(it => <li key={it.id} className="text-xs">{it.text}</li>)}</ul>
+        }
+
+        case 'table_block': {
+            const rows = (content.rows as { id: string; cells: { value: string }[] }[]) ?? []
+            if (rows.length === 0) return <p className="text-xs text-muted-foreground italic">No rows.</p>
+            return (
+                <div className="overflow-x-auto">
+                    <table className="text-xs border-collapse w-full">
+                        <tbody>
+                            {rows.map(row => (
+                                <tr key={row.id}>
+                                    {row.cells.map((cell, ci) => (
+                                        <td key={ci} className="border border-border px-2 py-0.5">{cell.value}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )
+        }
+
+        case 'grade_determination_block': {
+            const rows = (content.rows as { id: string; category: string; weight: number }[]) ?? []
+            if (rows.length === 0) return <p className="text-xs text-muted-foreground italic">No categories.</p>
+            return (
+                <div className="space-y-0.5">
+                    {rows.map(row => (
+                        <div key={row.id} className="flex items-center gap-2 text-xs">
+                            <span className="flex-1 truncate">{row.category}</span>
+                            <span className="text-muted-foreground shrink-0">{row.weight}%</span>
+                        </div>
+                    ))}
+                </div>
+            )
+        }
+
+        case 'response_block': {
+            const questions = (content.questions as { id: string; type: string; text: string; points: number }[]) ?? []
+            if (questions.length === 0) return <p className="text-xs text-muted-foreground italic">No questions.</p>
+            return (
+                <div className="space-y-1">
+                    {questions.map((q, i) => (
+                        <p key={q.id} className="text-xs">
+                            <span className="text-muted-foreground mr-1">{i + 1}.</span>
+                            {q.text || <em className="text-muted-foreground">Untitled</em>}
+                            <span className="text-muted-foreground ml-1.5">({q.type}, {q.points}pt{q.points !== 1 ? 's' : ''})</span>
+                        </p>
+                    ))}
+                </div>
+            )
+        }
+
+        case 'schedule_block': {
+            const units = (content.units as { id: string; weekNum: number; label: string; topics: unknown[] }[]) ?? []
+            if (units.length === 0) return <p className="text-xs text-muted-foreground italic">No weeks.</p>
+            return (
+                <div className="space-y-0.5">
+                    {units.map(unit => (
+                        <p key={unit.id} className="text-xs">
+                            <span className="font-medium">Week {unit.weekNum}</span>
+                            {unit.label && <span className="text-muted-foreground ml-1.5">— {unit.label}</span>}
+                            {unit.topics.length > 0 && (
+                                <span className="text-muted-foreground ml-1.5">({unit.topics.length} topic{unit.topics.length !== 1 ? 's' : ''})</span>
+                            )}
+                        </p>
+                    ))}
+                </div>
+            )
+        }
+
+        case 'file_block': {
+            const attachments = (content.attachments as { id: string; name: string }[]) ?? []
+            if (attachments.length === 0) return <p className="text-xs text-muted-foreground italic">No attachments.</p>
+            return (
+                <div className="space-y-0.5">
+                    {attachments.map(att => (
+                        <p key={att.id} className="text-xs">{att.name || <em className="text-muted-foreground">Unnamed file</em>}</p>
+                    ))}
+                </div>
+            )
+        }
+
+        default:
+            return null
+    }
 }
 
 // ── Block picker ──────────────────────────────────────────────────────────────
@@ -106,33 +297,34 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
 
 // ── Block form ────────────────────────────────────────────────────────────────
 
-function BlockForm({ mode, block, type, gradingScales, locked, onSave, onDelete, isSaving }: {
+function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGroups, onSave, onDelete, isSaving }: {
     mode: 'add' | 'edit'
     block?: SyllabusBlock
     type: BlockType
     gradingScales: GradingScale[]
     locked?: boolean
+    existingPrintGroups: string[]
     onSave: (body: Record<string, unknown>) => void
     onDelete?: () => void
     isSaving: boolean
 }) {
     const { label, Icon } = BLOCK_META[type] ?? { label: type, Icon: FileText }
     const [name, setName] = React.useState(block?.name ?? label)
-    const [isVisible, setIsVisible] = React.useState(block?.isVisible ?? true)
     const [printHeading, setPrintHeading] = React.useState(block?.printHeading ?? 3)
+    const [printGroup, setPrintGroup] = React.useState(block?.printGroup ?? '')
     const [content, setContent] = React.useState<Record<string, unknown>>(block?.content ?? newBlockContent(type))
 
     React.useEffect(() => {
         if (!block) return
         setName(block.name)
-        setIsVisible(block.isVisible)
         setPrintHeading(block.printHeading)
+        setPrintGroup(block.printGroup ?? '')
         setContent(block.content)
     }, [block?.id])
 
     return (
         <form
-            onSubmit={e => { e.preventDefault(); onSave({ name, isVisible, printHeading, content }) }}
+            onSubmit={e => { e.preventDefault(); onSave({ name, printHeading, ...(printGroup ? { printGroup } : {}), content }) }}
             className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl"
         >
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -140,24 +332,72 @@ function BlockForm({ mode, block, type, gradingScales, locked, onSave, onDelete,
             </div>
             <div className="space-y-1.5">
                 <Label className="text-xs">Block Name</Label>
-                <Input value={name} disabled={locked} onChange={e => setName(e.target.value)} className="rounded-none h-8 text-xs" required />
+                <Input placeholder={name} value={mode !== 'add' ? name : undefined} disabled={locked} onChange={e => setName(e.target.value)} className="rounded-none h-8 text-xs" required />
             </div>
-            <div className="flex items-center gap-6 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <Switch checked={isVisible} disabled={locked} onCheckedChange={setIsVisible} />
-                    <Label className="text-xs cursor-pointer">Visible</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Label className="text-xs shrink-0">Print Heading</Label>
-                    <Select value={String(printHeading)} disabled={locked} onValueChange={v => setPrintHeading(Number(v))}>
-                        <SelectTrigger className="w-20 h-7 text-xs rounded-none"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {BLK_HEADING_OPTS.map(n => <SelectItem key={n} value={String(n)}>H{n}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+
+            <div className="space-y-1.5">
+                <Label className="text-xs">Print Group</Label>
+                <Input
+                    placeholder="e.g. Intro"
+                    value={printGroup}
+                    disabled={locked}
+                    onChange={e => setPrintGroup(e.target.value)}
+                    className="rounded-none h-8 text-xs"
+                    list="print-group-datalist"
+                    autoComplete="off"
+                />
+                {existingPrintGroups.length > 0 && (
+                    <datalist id="print-group-datalist">
+                        {existingPrintGroups.map(pg => <option key={pg} value={pg} />)}
+                    </datalist>
+                )}
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                    The print group that this block is assigned to. Print groups are used to merge content together during printing (it combines separate blocks into a single block during printing).
+                </p>
+            </div>
+
+            {/* Print Heading Level — choice cards */}
+            <div className="space-y-1.5">
+                <Label className="text-xs">Print Heading Level</Label>
+                <div className="flex flex-col gap-1.5">
+                    {BLK_HEADING_OPTS.map(h => {
+                        const checked = printHeading === h
+                        return (
+                            <label
+                                key={h}
+                                className={cn(
+                                    'flex items-start gap-2.5 border p-3 cursor-pointer transition-colors',
+                                    locked && 'pointer-events-none opacity-60',
+                                    checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="printHeading"
+                                    checked={checked}
+                                    onChange={() => setPrintHeading(h)}
+                                    disabled={locked}
+                                    className="sr-only"
+                                />
+                                <div className={cn(
+                                    'mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center',
+                                    checked ? 'border-primary' : 'border-muted-foreground/40',
+                                )}>
+                                    {checked && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <div>
+                                        <p className="text-xs font-medium mb-0.5">H{h}</p>
+                                        <p className="text-[11px] text-muted-foreground leading-snug">{BLOCK_HEADING_DESCS[h]}</p>
+                                    </div>
+                                </div>
+                            </label>
+                        )
+                    })}
                 </div>
             </div>
-            <div className="border-t pt-4">
+
+            <div className="pt-2">
                 <BlockContentEditor
                     type={type}
                     content={content}
@@ -167,15 +407,20 @@ function BlockForm({ mode, block, type, gradingScales, locked, onSave, onDelete,
                 />
             </div>
             {!locked && (
-                <div className="flex gap-2 pt-2">
-                    <Button type="submit" disabled={isSaving} className="flex-1 rounded-none h-9 bg-primary text-black hover:bg-primary/80">
+                <div className="space-y-2 pt-2">
+                    <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
                         {isSaving
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Block' : 'Save Block'}
                     </Button>
-                    {mode === 'edit' && onDelete && (
-                        <Button type="button" variant="destructive" size="icon" className="h-9 w-9 rounded-none shrink-0" onClick={onDelete}>
-                            <Trash2 className="h-4 w-4" />
+                    {mode !== 'add' && onDelete && (
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={onDelete}
+                            className="w-full rounded-none h-9 text-xs"
+                        >
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Block
                         </Button>
                     )}
                 </div>
@@ -201,75 +446,171 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
                     <RichTextEditor
                         content={(content.html as string) ?? ''}
                         onChange={(html: string) => { if (!locked) onChange({ ...content, html }) }}
+                        className="rounded-none"
                     />
                 </div>
             )
 
-        case 'details_block':
+        case 'details_block': {
+            type Section = { id: string; html: string }
+            const sections: Section[] = (content.sections as Section[]) ?? []
             return (
                 <div className="space-y-3">
                     <div className="space-y-1.5">
                         <Label>Summary</Label>
-                        <Input value={(content.summary as string) ?? ''} disabled={locked}
+                        <Input value={(content.summary as string) ?? ''} disabled={locked} className="rounded-none"
                             onChange={e => onChange({ ...content, summary: e.target.value })} />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                         <Label>Content</Label>
-                        <RichTextEditor
-                            content={(content.html as string) ?? ''}
-                            onChange={(html: string) => { if (!locked) onChange({ ...content, html }) }}
-                        />
+                        {sections.map((sec, idx) => (
+                            <div key={sec.id} className="space-y-1">
+                                {sections.length > 1 && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Section {idx + 1}</span>
+                                        {!locked && (
+                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
+                                                onClick={() => onChange({ ...content, sections: sections.filter((_, i) => i !== idx) })}>
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                                <RichTextEditor
+                                    key={sec.id}
+                                    content={sec.html}
+                                    onChange={(html: string) => {
+                                        if (!locked) onChange({ ...content, sections: sections.map((s, i) => i === idx ? { ...s, html } : s) })
+                                    }}
+                                    className="rounded-none"
+                                />
+                            </div>
+                        ))}
+                        {sections.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic">No content areas. Add one below.</p>
+                        )}
+                        {!locked && (
+                            <Button type="button" variant="outline" size="sm" className="rounded-none"
+                                onClick={() => onChange({ ...content, sections: [...sections, { id: uid(), html: '' }] })}>
+                                <Plus className="h-4 w-4 mr-1" />Add Content Area
+                            </Button>
+                        )}
                     </div>
                 </div>
             )
+        }
 
         case 'video_block':
             return (
                 <div className="space-y-3">
                     <div className="space-y-1.5">
                         <Label>Video URL</Label>
-                        <Input value={(content.url as string) ?? ''} disabled={locked}
+                        <Input value={(content.url as string) ?? ''} disabled={locked} className="rounded-none"
                             onChange={e => onChange({ ...content, url: e.target.value })} placeholder="https://…" />
                     </div>
                     <div className="space-y-1.5">
                         <Label>Caption</Label>
-                        <Input value={(content.caption as string) ?? ''} disabled={locked}
+                        <Input value={(content.caption as string) ?? ''} disabled={locked} className="rounded-none"
                             onChange={e => onChange({ ...content, caption: e.target.value })} />
                     </div>
                 </div>
             )
 
         case 'list_block': {
-            const items = (content.items as { id: string; text: string }[]) ?? []
-            const style = (content.style as string) ?? 'bullet'
+            type LItem = { id: string; text: string; level: number }
+            const defaultStyles: Record<string, string> = { '1': 'disc', '2': 'circle', '3': 'square', '4': 'disc', '5': 'circle' }
+            const levelStyles = (content.levelStyles as Record<string, string>) ?? defaultStyles
+            const items: LItem[] = ((content.items as { id: string; text: string; level?: number }[]) ?? [])
+                .map(it => ({ ...it, level: it.level ?? 1 }))
+
+            function updateStyles(s: Record<string, string>) {
+                onChange({ ...content, levelStyles: s, items })
+            }
+            function updateItems(newItems: LItem[]) {
+                onChange({ ...content, levelStyles, items: newItems })
+            }
+
+            const styleOptionsSx = 'text-xs h-7'
             return (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <Label>Style</Label>
-                        <Select value={style} disabled={locked} onValueChange={v => onChange({ ...content, style: v })}>
-                            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="bullet">Bullet</SelectItem>
-                                <SelectItem value="numbered">Numbered</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <Label>Level Styles</Label>
+                        <div className="space-y-1.5">
+                            {([1, 2, 3, 4, 5] as const).map(lvl => (
+                                <div key={lvl} className="flex items-center gap-2" style={{ paddingLeft: `${(lvl - 1) * 14}px` }}>
+                                    <span className="text-xs text-muted-foreground w-14 shrink-0">Level {lvl}</span>
+                                    <Select
+                                        value={levelStyles[String(lvl)] ?? 'disc'}
+                                        disabled={locked}
+                                        onValueChange={v => updateStyles({ ...levelStyles, [String(lvl)]: v })}
+                                    >
+                                        <SelectTrigger className={`flex-1 ${styleOptionsSx}`}><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>Bulleted</SelectLabel>
+                                                <SelectItem value="disc">Disc (●)</SelectItem>
+                                                <SelectItem value="circle">Circle (○)</SelectItem>
+                                                <SelectItem value="square">Square (■)</SelectItem>
+                                            </SelectGroup>
+                                            <SelectSeparator />
+                                            <SelectGroup>
+                                                <SelectLabel>Numbered</SelectLabel>
+                                                <SelectItem value="decimal">Decimal (1, 2, 3…)</SelectItem>
+                                                <SelectItem value="decimal-leading-zero">Decimal leading zero (01, 02…)</SelectItem>
+                                                <SelectItem value="upper-roman">Upper Roman (I, II, III…)</SelectItem>
+                                                <SelectItem value="lower-roman">Lower Roman (i, ii, iii…)</SelectItem>
+                                                <SelectItem value="upper-alpha">Upper Alpha (A, B, C…)</SelectItem>
+                                                <SelectItem value="lower-alpha">Lower Alpha (a, b, c…)</SelectItem>
+                                                <SelectItem value="upper-greek">Upper Greek (Α, Β, Γ…)</SelectItem>
+                                                <SelectItem value="lower-greek">Lower Greek (α, β, γ…)</SelectItem>
+                                                <SelectItem value="none">None</SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                     <div className="space-y-2">
+                        <Label>Items</Label>
                         {items.map((item, idx) => (
-                            <div key={item.id} className="flex items-center gap-2">
-                                <Input value={item.text} disabled={locked}
-                                    onChange={e => onChange({ ...content, items: items.map((it, i) => i === idx ? { ...it, text: e.target.value } : it) })} />
+                            <div key={item.id} className="flex items-center gap-1" style={{ paddingLeft: `${(item.level - 1) * 16}px` }}>
+                                <button
+                                    type="button"
+                                    disabled={locked || item.level <= 1}
+                                    title="Decrease indent"
+                                    onClick={() => updateItems(items.map((it, i) => i === idx ? { ...it, level: Math.max(1, it.level - 1) } : it))}
+                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 shrink-0"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={locked || item.level >= 5}
+                                    title="Increase indent"
+                                    onClick={() => updateItems(items.map((it, i) => i === idx ? { ...it, level: Math.min(5, it.level + 1) } : it))}
+                                    className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 shrink-0"
+                                >
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </button>
+                                <Input
+                                    value={item.text}
+                                    disabled={locked}
+                                    placeholder="Item text"
+                                    className="flex-1 h-7 text-xs rounded-none"
+                                    onChange={e => updateItems(items.map((it, i) => i === idx ? { ...it, text: e.target.value } : it))}
+                                />
                                 {!locked && (
-                                    <Button type="button" variant="ghost" size="icon"
-                                        onClick={() => onChange({ ...content, items: items.filter((_, i) => i !== idx) })}>
-                                        <Trash2 className="h-4 w-4" />
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                                        onClick={() => updateItems(items.filter((_, i) => i !== idx))}>
+                                        <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                             </div>
                         ))}
                         {!locked && (
-                            <Button type="button" variant="outline" size="sm"
-                                onClick={() => onChange({ ...content, items: [...items, { id: uid(), text: '' }] })}>
+                            <Button type="button" variant="outline" size="sm" className="rounded-none"
+                                onClick={() => updateItems([...items, { id: uid(), text: '', level: items.length > 0 ? items[items.length - 1].level : 1 }])}>
                                 <Plus className="h-4 w-4 mr-1" />Add Item
                             </Button>
                         )}
@@ -384,7 +725,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
             return (
                 <div className="space-y-4">
                     {questions.map((q, qIdx) => (
-                        <div key={q.id} className="border rounded-md p-3 space-y-2">
+                        <div key={q.id} className="border p-3 space-y-2">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-medium text-muted-foreground">{q.type}</span>
                                 <Input className="flex-1 text-sm" value={q.text} placeholder="Question text" disabled={locked}
@@ -469,7 +810,7 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
             return (
                 <div className="space-y-4">
                     {units.map((unit, uIdx) => (
-                        <div key={unit.id} className="border rounded-md p-3 space-y-3">
+                        <div key={unit.id} className="border p-3 space-y-3">
                             <div className="grid grid-cols-[5rem_1fr_1fr_auto] gap-2 items-center">
                                 <div className="space-y-0.5">
                                     <Label className="text-xs">Week</Label>
@@ -575,7 +916,7 @@ export function BlockColumn({
     selectedBlockId, setSelectedBlockId,
     newBlockType, setNewBlockType,
     gradingScales,
-    onAddBlock, onUpdateBlock, onDeleteBlock, onToggleBlockVisible, onReorderBlocks,
+    onAddBlock, onUpdateBlock, onDeleteBlock, onReorderBlocks,
     isAdding, isUpdating,
     mobileBack,
     syllabi,
@@ -594,7 +935,6 @@ export function BlockColumn({
     onAddBlock: (segId: string, body: Record<string, unknown>) => void
     onUpdateBlock: (segId: string, blockId: string, body: Record<string, unknown>) => void
     onDeleteBlock: (segId: string, blockId: string) => void
-    onToggleBlockVisible: (segId: string, blockId: string, current: boolean) => void
     onReorderBlocks: (segId: string, orderedIds: string[]) => void
     isAdding: boolean
     isUpdating: boolean
@@ -604,6 +944,14 @@ export function BlockColumn({
     isCopyingBlock: boolean
 }) {
     const [libraryOpen, setLibraryOpen] = React.useState(false)
+    const [activeId, setActiveId] = React.useState<string | null>(null)
+    const [draggingHeading, setDraggingHeading] = React.useState<number | null>(null)
+    const [optimisticHeadings, setOptimisticHeadings] = React.useState<Record<string, number>>({})
+    const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null)
+    const draggingHeadingRef = React.useRef<number | null>(null)
+    const dragStartHeadingRef = React.useRef<number>(3)
+    const listRef = React.useRef<HTMLDivElement>(null)
+    const deleteConfirmBlock = selectedSegment.blocks.find(b => b.id === deleteConfirmId)
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -612,8 +960,58 @@ export function BlockColumn({
 
     const sortedBlocks = [...selectedSegment.blocks].sort((a, b) => a.sortOrder - b.sortOrder)
     const selectedBlock = selectedSegment.blocks.find(b => b.id === selectedBlockId)
+    const existingPrintGroups = [...new Set(
+        selectedSegment.blocks.map(b => b.printGroup).filter((pg): pg is string => !!pg && pg.length > 0)
+    )]
+
+    React.useEffect(() => {
+        setOptimisticHeadings(prev => {
+            const next = { ...prev }
+            let changed = false
+            for (const block of selectedSegment.blocks) {
+                if (next[block.id] !== undefined && next[block.id] === block.printHeading) {
+                    delete next[block.id]; changed = true
+                }
+            }
+            return changed ? next : prev
+        })
+    }, [selectedSegment.blocks])
+
+    React.useEffect(() => {
+        if (!activeId) return
+        function onPointerMove(e: PointerEvent) {
+            if (!listRef.current) return
+            const rect = listRef.current.getBoundingClientRect()
+            const x = e.clientX - rect.left - 12
+            const heading = Math.min(6, Math.max(3, Math.round(x / 16) + 3))
+            draggingHeadingRef.current = heading
+            setDraggingHeading(heading)
+        }
+        document.addEventListener('pointermove', onPointerMove)
+        return () => document.removeEventListener('pointermove', onPointerMove)
+    }, [activeId])
+
+    function handleDragStart(event: DragStartEvent) {
+        const block = sortedBlocks.find(b => b.id === event.active.id)
+        if (block) {
+            setActiveId(String(event.active.id))
+            dragStartHeadingRef.current = block.printHeading
+            draggingHeadingRef.current = block.printHeading
+            setDraggingHeading(block.printHeading)
+        }
+    }
 
     function handleDragEnd(event: DragEndEvent) {
+        const finalHeading = draggingHeadingRef.current
+        const headingChanged = finalHeading !== null && finalHeading !== dragStartHeadingRef.current
+        const blockId = activeId
+        setActiveId(null); setDraggingHeading(null); draggingHeadingRef.current = null
+
+        if (headingChanged && blockId && finalHeading !== null) {
+            setOptimisticHeadings(prev => ({ ...prev, [blockId]: finalHeading }))
+            onUpdateBlock(selectedSegment.id, blockId, { printHeading: finalHeading })
+        }
+
         const { active, over } = event
         if (!over || active.id === over.id) return
         const oldIdx = sortedBlocks.findIndex(b => b.id === active.id)
@@ -626,27 +1024,42 @@ export function BlockColumn({
 
             {col3Mode === 'blocks' && (
                 <>
-                    <ColHeader title={selectedSegment.name} subtitle="Block(s)" onBack={mobileBack}>
+                    <ColHeader title={selectedSegment.name} subtitle={`${selectedSegment.blocks.length} block${selectedSegment.blocks.length !== 1 ? 's' : ''}`} onBack={mobileBack}>
                         {!locked && (
                             <AddButton onClick={() => setCol3Mode('picker')} />
                         )}
                     </ColHeader>
-                    <div className="flex-1 overflow-y-auto p-3">
+                    <div ref={listRef} className="relative flex-1 overflow-y-auto p-3">
+                        {activeId && (
+                            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                                {[3, 4, 5, 6].map(h => (
+                                    <div
+                                        key={h}
+                                        className={cn(
+                                            'absolute top-0 bottom-0 w-0 border-l border-dashed',
+                                            draggingHeading === h ? 'border-primary' : 'border-foreground/30',
+                                        )}
+                                        style={{ left: `${12 + (h - 3) * 16}px` }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                         {sortedBlocks.length === 0 ? (
                             <p className="text-xs text-muted-foreground py-8 text-center">No blocks yet.</p>
                         ) : (
-                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                                 <SortableContext items={sortedBlocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                                     <div className="flex flex-col gap-2">
                                         {sortedBlocks.map(block => (
                                             <SortableBlockRow
                                                 key={block.id}
-                                                block={block}
+                                                block={optimisticHeadings[block.id] !== undefined
+                                                    ? { ...block, printHeading: optimisticHeadings[block.id] }
+                                                    : block}
                                                 selected={selectedBlockId === block.id}
-                                                onSelect={() => { setSelectedBlockId(block.id); setCol3Mode('editBlock') }}
-                                                onToggleVisible={() => {
-                                                    if (!locked) onToggleBlockVisible(selectedSegment.id, block.id, block.isVisible)
-                                                }}
+                                                draggingHeading={activeId === block.id ? draggingHeading : null}
+                                                onEdit={() => { setSelectedBlockId(block.id); setCol3Mode('editBlock') }}
+                                                onDelete={() => setDeleteConfirmId(block.id)}
                                             />
                                         ))}
                                     </div>
@@ -678,6 +1091,7 @@ export function BlockColumn({
                         mode="add"
                         type={newBlockType}
                         gradingScales={gradingScales}
+                        existingPrintGroups={existingPrintGroups}
                         onSave={body => onAddBlock(selectedSegment.id, { ...body, type: newBlockType, content: newBlockContent(newBlockType) })}
                         isSaving={isAdding}
                     />
@@ -698,8 +1112,9 @@ export function BlockColumn({
                             type={selectedBlock.type}
                             gradingScales={gradingScales}
                             locked={locked}
+                            existingPrintGroups={existingPrintGroups}
                             onSave={body => onUpdateBlock(selectedSegment.id, selectedBlock.id, body)}
-                            onDelete={() => onDeleteBlock(selectedSegment.id, selectedBlock.id)}
+                            onDelete={() => { setDeleteConfirmId(selectedBlock.id); setCol3Mode('blocks') }}
                             isSaving={isUpdating}
                         />
                     ) : (
@@ -710,15 +1125,54 @@ export function BlockColumn({
                 </>
             )}
 
+            {col3Mode === 'studentProgress' && (
+                <>
+                    <ColHeader
+                        title="Student Progress"
+                        subtitle=""
+                        onBack={() => setCol3Mode('blocks')}
+                        icon={<Users className="h-4 w-4" />}
+                    />
+                    <div className="flex-1 flex items-center justify-center p-8">
+                        <p className="text-xs text-muted-foreground text-center">Student progress tracking coming soon.</p>
+                    </div>
+                </>
+            )}
+
+            <Dialog open={!!deleteConfirmId} onOpenChange={v => !v && setDeleteConfirmId(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Block</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <strong>{deleteConfirmBlock?.name ?? 'this block'}</strong>. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                onDeleteBlock(selectedSegment.id, deleteConfirmId!)
+                                if (selectedBlockId === deleteConfirmId) {
+                                    setSelectedBlockId(null)
+                                    setCol3Mode('blocks')
+                                }
+                                setDeleteConfirmId(null)
+                            }}
+                        >
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <ContentLibraryDialog
                 mode="block"
                 open={libraryOpen}
-                onClose={() => setLibraryOpen(false)}
+                onClose={() => { setLibraryOpen(false); setCol3Mode('blocks') }}
                 syllabi={syllabi}
                 onCopyBlock={(sourceSyllabusId, sourceSegmentId, sourceBlockId) => {
                     onCopyBlock(sourceSyllabusId, sourceSegmentId, sourceBlockId)
-                    setLibraryOpen(false)
-                    setCol3Mode('blocks')
                 }}
                 isCopying={isCopyingBlock}
             />

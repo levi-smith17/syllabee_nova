@@ -19,7 +19,7 @@ export const handler = async (
         if (!id || !segmentId) return toApiGatewayResponse(notFound('Syllabus or segment not found'))
 
         const body = JSON.parse(event.body ?? '{}')
-        const { type, name, content, isVisible, printHeading } = body
+        const { type, name, content, isVisible, printHeading, printGroup } = body
 
         if (!type || !VALID_BLOCK_TYPES.includes(type)) {
             return toApiGatewayResponse(badRequest('Valid block type is required'))
@@ -64,6 +64,7 @@ export const handler = async (
                 name: String(name),
                 isVisible: isVisible ?? true,
                 printHeading: printHeading ?? 3,
+                ...(printGroup !== undefined ? { printGroup: String(printGroup) } : {}),
                 content: content ?? {},
                 published: false,
                 sortOrder: maxOrder + 1,

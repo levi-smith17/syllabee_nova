@@ -151,6 +151,7 @@ export interface SyllabusBlock {
   isVisible: boolean
   sortOrder: number
   printHeading: number
+  printGroup?: string
   content: Record<string, unknown>
   published: boolean
   permalink?: string

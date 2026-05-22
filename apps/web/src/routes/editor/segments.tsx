@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal } from 'lucide-react'
+import { Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, BookOpen, Users, Check, ExternalLink } from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -14,10 +14,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { ColHeader, Col2Mode, SEG_HEADING_OPTS } from './shared'
-import { SectionMultiSelect } from './section-multi-select'
+import { SectionMultiSelect, sectionLabel } from './section-multi-select'
 import { ContentLibraryDialog } from './content-library'
 import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, EditorSection } from '@syllabee/types'
 
@@ -37,21 +37,24 @@ const HEADING_DESCS: Record<number, string> = {
 
 // ── Sortable segment row ──────────────────────────────────────────────────────
 
-function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onToggleVisible, draggingHeading }: {
+function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onToggleVisible, onOpenStudentProgress, draggingHeading, allSections, syllabus }: {
     segment: SegmentWithBlocks
     selected: boolean
     onSelect: () => void
     onEdit: () => void
     onDelete: () => void
     onToggleVisible: () => void
+    onOpenStudentProgress: () => void
     draggingHeading: number | null
+    allSections: EditorSection[]
+    syllabus?: MasterSyllabus
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: segment.id })
+    const [copiedSectionId, setCopiedSectionId] = React.useState<string | null>(null)
 
     const headingLevel = isDragging && draggingHeading != null ? draggingHeading : segment.printHeading
     const HeadingIcon = HEADING_ICONS[headingLevel] ?? Heading2
 
-    // Snap x to target heading indent; preserve y for vertical sorting
     const snappedTransform = isDragging && draggingHeading != null && transform
         ? { ...transform, x: (draggingHeading - segment.printHeading) * 16 }
         : transform
@@ -60,6 +63,18 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
         transform: CSS.Transform.toString(snappedTransform),
         transition,
         marginLeft: `${(segment.printHeading - 2) * 16}px`,
+    }
+
+    const hasSections = (segment.sections ?? []).length > 0
+    const linkedSections = (segment.sections ?? [])
+        .map(id => allSections.find(s => s.id === id))
+        .filter(Boolean) as EditorSection[]
+
+    function copyUrl(sec: EditorSection) {
+        const url = `${window.location.origin}/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`
+        void navigator.clipboard.writeText(url)
+        setCopiedSectionId(sec.id)
+        setTimeout(() => setCopiedSectionId(null), 1500)
     }
 
     return (
@@ -72,7 +87,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                 isDragging && 'opacity-50 z-10',
             )}
         >
-            {/* Left action bar — sibling to content area to avoid portal event propagation */}
+            {/* Left action bar (primary) — grip, heading icon, more menu */}
             <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
                 <button
                     className="p-1.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
@@ -101,13 +116,106 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+            </div>
+
+            {/* Second action bar (cyan) — visibility, view syllabi, student progress */}
+            <div className="flex flex-col items-center gap-1 py-2 px-1.5 shrink-0 bg-[hsl(var(--sidebar-foreground))]">
                 <button
-                    className="p-1.5 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors"
+                    className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
                     onClick={onToggleVisible}
                     title={segment.isVisible ? 'Hide segment' : 'Show segment'}
                 >
                     {segment.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </button>
+
+                {hasSections && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
+                                title="View Syllabi"
+                            >
+                                <BookOpen className="h-4 w-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" side="right" className="min-w-52">
+                            {linkedSections.map(sec => (
+                                <DropdownMenuGroup key={sec.id}>
+                                    <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                                        {sectionLabel(sec)}
+                                    </DropdownMenuLabel>
+                                    {syllabus?.interactiveView ? (
+                                        <>
+                                            <DropdownMenuItem asChild>
+                                                <a
+                                                    href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}?mode=complete`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    Complete Syllabus
+                                                </a>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <a
+                                                    href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    Interactive Syllabus
+                                                </a>
+                                            </DropdownMenuItem>
+                                        </>
+                                    ) : (
+                                        <DropdownMenuItem asChild>
+                                            <a
+                                                href={`/s/${sec.courseCode}/${sec.termCode}/${sec.sectionCode}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 cursor-pointer"
+                                            >
+                                                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                Traditional Syllabus
+                                            </a>
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuGroup>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                                    Copy URL
+                                </DropdownMenuLabel>
+                                {linkedSections.map(sec => (
+                                    <DropdownMenuItem
+                                        key={sec.id}
+                                        onClick={() => copyUrl(sec)}
+                                        className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                        {copiedSectionId === sec.id
+                                            ? <Check className="h-3.5 w-3.5 text-green-500" />
+                                            : <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                        }
+                                        <span className="text-[11px]">{sectionLabel(sec)}</span>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+
+                {hasSections && (
+                    <button
+                        className="p-1.5 text-sidebar hover:bg-sidebar/20 rounded-sm transition-colors"
+                        onClick={onOpenStudentProgress}
+                        title="Student Progress"
+                    >
+                        <Users className="h-4 w-4" />
+                    </button>
+                )}
             </div>
 
             {/* Clickable selection area */}
@@ -124,6 +232,12 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                     <div className="mt-1 text-[11px] text-muted-foreground">
                         <span className="font-bold">Description:</span>{' '}
                         <span>{segment.description}</span>
+                    </div>
+                )}
+                {linkedSections.length > 0 && (
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                        <span className="font-bold">Section(s):</span>{' '}
+                        <span>{linkedSections.map(s => sectionLabel(s)).join(', ')}</span>
                     </div>
                 )}
             </div>
@@ -329,6 +443,7 @@ export function SegmentColumn({
     terms,
     onCopySegment,
     isCopyingSegment,
+    onOpenStudentProgress,
 }: {
     syllabus?: MasterSyllabus
     segments: SegmentWithBlocks[]
@@ -353,6 +468,7 @@ export function SegmentColumn({
     terms: { id: string; code: string }[]
     onCopySegment: (sourceSyllabusId: string, sourceSegmentId: string, sections: string[]) => void
     isCopyingSegment: boolean
+    onOpenStudentProgress: (segId: string) => void
 }) {
     const [libraryOpen, setLibraryOpen] = React.useState(false)
     const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null)
@@ -444,7 +560,7 @@ export function SegmentColumn({
 
             {col2Mode === 'segmentList' && (
                 <>
-                    <ColHeader title={syllabus?.title ?? '…'} subtitle="Segment(s)" onBack={mobileBack}>
+                    <ColHeader title={syllabus?.title ?? '…'} subtitle={`${segments.length} segment${segments.length !== 1 ? 's' : ''}`} onBack={mobileBack}>
                         {!locked && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -504,12 +620,15 @@ export function SegmentColumn({
                                                     : seg}
                                                 selected={selectedSegmentId === seg.id}
                                                 draggingHeading={activeId === seg.id ? draggingHeading : null}
+                                                allSections={availableSections}
+                                                syllabus={syllabus}
                                                 onSelect={() => onSelectSegment(seg.id)}
                                                 onEdit={() => { setEditingSegmentId(seg.id); setCol2Mode('segmentEdit') }}
                                                 onDelete={() => setDeleteConfirmId(seg.id)}
                                                 onToggleVisible={() => {
                                                     if (!locked) onUpdateSegment(seg.id, { isVisible: !seg.isVisible })
                                                 }}
+                                                onOpenStudentProgress={() => onOpenStudentProgress(seg.id)}
                                             />
                                         ))}
                                     </div>

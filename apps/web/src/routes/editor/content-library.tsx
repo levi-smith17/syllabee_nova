@@ -32,6 +32,11 @@ export function ContentLibraryDialog({
     const [segmentSections, setSegmentSections] = React.useState<Record<string, string[]>>({})
     const [mobileExpandedId, setMobileExpandedId] = React.useState<string | null>(null)
 
+    // Block wizard
+    const [blockStep, setBlockStep] = React.useState<'select' | 'confirm'>('select')
+    const [selectedBlockKeys, setSelectedBlockKeys] = React.useState<Set<string>>(new Set())
+    // key format: `${segmentId}:${blockId}`
+
     React.useEffect(() => {
         if (!open) {
             setSelectedSyllabusId(null)
@@ -40,6 +45,8 @@ export function ContentLibraryDialog({
             setSelectedSegments(new Set())
             setSegmentSections({})
             setMobileExpandedId(null)
+            setBlockStep('select')
+            setSelectedBlockKeys(new Set())
         }
     }, [open])
 
@@ -62,6 +69,7 @@ export function ContentLibraryDialog({
     function handleSelectSyllabus(syllabusId: string) {
         if (selectedSyllabusId !== syllabusId) {
             setSelectedSegments(new Set())
+            setSelectedBlockKeys(new Set())
             setSelectedSyllabusId(syllabusId)
         }
         setExpandedSegmentId(null)
@@ -73,6 +81,7 @@ export function ContentLibraryDialog({
         } else {
             if (selectedSyllabusId !== syllabusId) {
                 setSelectedSegments(new Set())
+                setSelectedBlockKeys(new Set())
                 setSelectedSyllabusId(syllabusId)
             }
             setMobileExpandedId(syllabusId)
@@ -95,8 +104,44 @@ export function ContentLibraryDialog({
         })
     }
 
+    function toggleBlock(segmentId: string, blockId: string) {
+        const key = `${segmentId}:${blockId}`
+        setSelectedBlockKeys(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key)
+            else next.add(key)
+            return next
+        })
+    }
+
+    function handleConfirmBlockCopy() {
+        if (!selectedSyllabusId) return
+        selectedBlockKeys.forEach(key => {
+            const colonIdx = key.indexOf(':')
+            const segmentId = key.slice(0, colonIdx)
+            const blockId = key.slice(colonIdx + 1)
+            onCopyBlock?.(selectedSyllabusId, segmentId, blockId)
+        })
+        onClose()
+    }
+
+    const selectedBlockDetails = React.useMemo(() => {
+        const result: { segment: (typeof segments)[0]; block: (typeof segments)[0]['blocks'][0] }[] = []
+        for (const key of selectedBlockKeys) {
+            const colonIdx = key.indexOf(':')
+            const segmentId = key.slice(0, colonIdx)
+            const blockId = key.slice(colonIdx + 1)
+            const segment = segments.find(s => s.id === segmentId)
+            const block = segment?.blocks.find(b => b.id === blockId)
+            if (segment && block) result.push({ segment, block })
+        }
+        return result
+    }, [segments, selectedBlockKeys])
+
     const stepDescription = mode === 'block'
-        ? 'Select a block to copy it into this segment.'
+        ? blockStep === 'confirm'
+            ? 'Review your selection, then click Copy.'
+            : 'Select one or more blocks to copy into this segment.'
         : step === 'select'
             ? 'Select one or more segments to deep-copy into this syllabus.'
             : step === 'sections'
@@ -113,10 +158,11 @@ export function ContentLibraryDialog({
 
                 <div className="flex h-[420px] overflow-hidden">
 
-                    {/* ── Block mode (unchanged) ──────────────────────────────────── */}
-                    {mode === 'block' && (
+                    {/* ── Block mode: Step 1 — Select ────────────────────────────── */}
+                    {mode === 'block' && blockStep === 'select' && (
                         <>
-                            <div className="w-52 shrink-0 border-r flex flex-col overflow-hidden">
+                            {/* Desktop split-pane */}
+                            <div className="hidden md:flex w-52 shrink-0 border-r flex-col overflow-hidden">
                                 <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border-b bg-muted/40">
                                     Syllabi
                                 </p>
@@ -130,7 +176,7 @@ export function ContentLibraryDialog({
                                                 'w-full text-left px-3 py-2 border-b border-muted/40 hover:bg-muted/40 transition-colors',
                                                 selectedSyllabusId === s.id && 'bg-muted',
                                             )}
-                                            onClick={() => { setSelectedSyllabusId(s.id); setExpandedSegmentId(null) }}
+                                            onClick={() => handleSelectSyllabus(s.id)}
                                         >
                                             <p className="text-xs font-medium truncate">{s.title}</p>
                                             <p className="text-[11px] text-muted-foreground">{s.termCode ?? '—'}</p>
@@ -139,7 +185,7 @@ export function ContentLibraryDialog({
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto">
+                            <div className="hidden md:flex flex-1 flex-col overflow-y-auto">
                                 {!selectedSyllabusId ? (
                                     <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                                         Select a syllabus to browse its content
@@ -176,20 +222,29 @@ export function ContentLibraryDialog({
                                                         </span>
                                                     </button>
                                                     {isExpanded && sortedBlocks.map(block => {
+                                                        const key = `${seg.id}:${block.id}`
+                                                        const checked = selectedBlockKeys.has(key)
                                                         const { label, Icon } = BLOCK_META[block.type] ?? { label: block.type, Icon: FileText }
                                                         return (
                                                             <button
                                                                 key={block.id}
-                                                                disabled={isCopying}
-                                                                className="flex items-center gap-2 w-full text-left pl-8 pr-3 py-2 border border-t-0 border-border hover:border-primary/60 hover:bg-muted/40 transition-colors disabled:opacity-50"
-                                                                onClick={() => onCopyBlock?.(selectedSyllabusId, seg.id, block.id)}
+                                                                className={cn(
+                                                                    'flex items-center gap-2 w-full text-left pl-8 pr-3 py-2 border border-t-0 transition-colors',
+                                                                    checked ? 'border-primary bg-muted' : 'border-border hover:border-primary/60 hover:bg-muted/40',
+                                                                )}
+                                                                onClick={() => toggleBlock(seg.id, block.id)}
                                                             >
+                                                                <div className={cn(
+                                                                    'h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center',
+                                                                    checked ? 'border-primary bg-primary' : 'border-muted-foreground/40',
+                                                                )}>
+                                                                    {checked && <span className="text-black text-[10px] font-bold leading-none">✓</span>}
+                                                                </div>
                                                                 <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs truncate">{block.name}</p>
                                                                     <p className="text-[10px] text-muted-foreground">{label}</p>
                                                                 </div>
-                                                                <Copy className="h-3 w-3 text-muted-foreground shrink-0" />
                                                             </button>
                                                         )
                                                     })}
@@ -199,7 +254,126 @@ export function ContentLibraryDialog({
                                     </div>
                                 )}
                             </div>
+
+                            {/* Mobile accordion */}
+                            <div className="md:hidden flex-1 overflow-y-auto">
+                                {syllabi.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground px-3 py-4 text-center">No syllabi</p>
+                                ) : syllabi.map(s => {
+                                    const isSyllabusExpanded = mobileExpandedId === s.id
+                                    const mobileLoading = isSyllabusExpanded && selectedSyllabusId === s.id && isLoading
+                                    const mobileSegments = isSyllabusExpanded && selectedSyllabusId === s.id ? segments : []
+                                    return (
+                                        <div key={s.id}>
+                                            <button
+                                                className={cn(
+                                                    'flex items-center gap-2 w-full text-left px-3 py-2.5 border-b border-muted/40 hover:bg-muted/40 transition-colors',
+                                                    isSyllabusExpanded && 'bg-muted/40',
+                                                )}
+                                                onClick={() => handleMobileSyllabusToggle(s.id)}
+                                            >
+                                                <ChevronRight className={cn(
+                                                    'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+                                                    isSyllabusExpanded && 'rotate-90',
+                                                )} />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium truncate">{s.title}</p>
+                                                    <p className="text-[11px] text-muted-foreground">{s.termCode ?? '—'}</p>
+                                                </div>
+                                            </button>
+                                            {isSyllabusExpanded && (
+                                                mobileLoading ? (
+                                                    <div className="flex items-center justify-center py-4">
+                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    </div>
+                                                ) : mobileSegments.length === 0 ? (
+                                                    <p className="text-xs text-muted-foreground px-6 py-2 italic">No segments</p>
+                                                ) : mobileSegments.map(seg => {
+                                                    const isSegExpanded = expandedSegmentId === seg.id
+                                                    const sortedBlocks = [...seg.blocks].sort((a, b) => a.sortOrder - b.sortOrder)
+                                                    return (
+                                                        <div key={seg.id}>
+                                                            <button
+                                                                className={cn(
+                                                                    'flex items-center gap-2 w-full text-left pl-6 pr-3 py-2 border-b border-muted/40 transition-colors hover:bg-muted/40',
+                                                                    isSegExpanded && 'bg-muted/40',
+                                                                )}
+                                                                onClick={() => setExpandedSegmentId(isSegExpanded ? null : seg.id)}
+                                                            >
+                                                                <ChevronRight className={cn(
+                                                                    'h-3 w-3 shrink-0 text-muted-foreground transition-transform',
+                                                                    isSegExpanded && 'rotate-90',
+                                                                )} />
+                                                                <p className="text-xs font-medium flex-1 truncate">{seg.name}</p>
+                                                                <span className="text-[11px] text-muted-foreground shrink-0">
+                                                                    {seg.blocks.length}
+                                                                </span>
+                                                            </button>
+                                                            {isSegExpanded && sortedBlocks.map(block => {
+                                                                const key = `${seg.id}:${block.id}`
+                                                                const checked = selectedBlockKeys.has(key)
+                                                                const { label, Icon } = BLOCK_META[block.type] ?? { label: block.type, Icon: FileText }
+                                                                return (
+                                                                    <button
+                                                                        key={block.id}
+                                                                        className={cn(
+                                                                            'flex items-center gap-2 w-full text-left pl-10 pr-3 py-2 border-b border-muted/40 transition-colors',
+                                                                            checked ? 'bg-muted border-l-2 border-l-primary' : 'hover:bg-muted/40',
+                                                                        )}
+                                                                        onClick={() => toggleBlock(seg.id, block.id)}
+                                                                    >
+                                                                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-xs truncate">{block.name}</p>
+                                                                            <p className="text-[10px] text-muted-foreground">{label}</p>
+                                                                        </div>
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )
+                                                })
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </>
+                    )}
+
+                    {/* ── Block mode: Step 2 — Confirm ───────────────────────────── */}
+                    {mode === 'block' && blockStep === 'confirm' && (
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                                {selectedBlockKeys.size} block{selectedBlockKeys.size !== 1 ? 's' : ''} to copy
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                {segments
+                                    .filter(seg => selectedBlockDetails.some(d => d.segment.id === seg.id))
+                                    .map(seg => {
+                                        const segBlocks = selectedBlockDetails.filter(d => d.segment.id === seg.id)
+                                        return (
+                                            <div key={seg.id}>
+                                                <p className="text-[11px] font-semibold text-muted-foreground mb-1">{seg.name}</p>
+                                                <div className="flex flex-col gap-1">
+                                                    {segBlocks.map(({ block }) => {
+                                                        const { label, Icon } = BLOCK_META[block.type] ?? { label: block.type, Icon: FileText }
+                                                        return (
+                                                            <div key={block.id} className="border border-border p-2 flex items-center gap-2">
+                                                                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-medium truncate">{block.name}</p>
+                                                                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                            </div>
+                        </div>
                     )}
 
                     {/* ── Segment mode: Step 1 — Select ──────────────────────────── */}
@@ -381,6 +555,44 @@ export function ContentLibraryDialog({
                         </div>
                     )}
                 </div>
+
+                {/* Block wizard footer */}
+                {mode === 'block' && (
+                    <div className="px-4 py-3 border-t flex items-center justify-between">
+                        {blockStep === 'select' ? (
+                            <>
+                                <span className="text-[11px] text-muted-foreground">
+                                    {selectedBlockKeys.size > 0 ? `${selectedBlockKeys.size} selected` : ''}
+                                </span>
+                                <Button
+                                    size="sm"
+                                    className="rounded-none h-8 text-xs"
+                                    disabled={selectedBlockKeys.size === 0}
+                                    onClick={() => setBlockStep('confirm')}
+                                >
+                                    Next <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" size="sm" className="rounded-none h-8 text-xs"
+                                    onClick={() => setBlockStep('select')}>
+                                    <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Back
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    disabled={isCopying}
+                                    className="rounded-none h-8 text-xs bg-primary text-black hover:bg-primary/80"
+                                    onClick={handleConfirmBlockCopy}
+                                >
+                                    {isCopying
+                                        ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Copying…</>
+                                        : `Copy ${selectedBlockKeys.size} Block${selectedBlockKeys.size !== 1 ? 's' : ''}`}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {/* Segment wizard footer */}
                 {mode === 'segment' && (
