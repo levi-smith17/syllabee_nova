@@ -35,8 +35,8 @@ describe('editor/grading-scales-list', () => {
 
     it('paginates through multiple pages', async () => {
         mockSend
-            .mockResolvedValueOnce({ Items: [{ id: 'g1' }], LastEvaluatedKey: { pk: 'k1' } })
-            .mockResolvedValueOnce({ Items: [{ id: 'g2' }] })
+            .mockResolvedValueOnce({ Items: [{ pk: 'GRADESCALE#g1', sk: 'METADATA', id: 'g1', name: 'Scale 1', ownerId: 'u1', createdAt: '' }], LastEvaluatedKey: { pk: 'k1' } })
+            .mockResolvedValueOnce({ Items: [{ pk: 'GRADESCALE#g2', sk: 'METADATA', id: 'g2', name: 'Scale 2', ownerId: 'u1', createdAt: '' }] })
         const result = await handler(makeEvent()) as any
         expect(result.statusCode).toBe(200)
         const { data } = JSON.parse(result.body)
