@@ -83,7 +83,7 @@ export default function EditorPage() {
     })
 
     const { data: allSections = [] } = useQuery({
-        queryKey: ['sections'],
+        queryKey: ['editorSections'],
         queryFn: () => apiFetch<{ data: EditorSection[] }>('/editor/sections').then(r => r.data ?? []),
         staleTime: 1000 * 60 * 30,
     })
