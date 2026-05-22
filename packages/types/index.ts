@@ -134,7 +134,9 @@ export interface SyllabusSegment {
 export interface EditorSection {
   id: string
   courseId: string
+  courseCode: string
   termId: string
+  termCode: string
   sectionCode: string
   meetingDays?: string | null
   meetingTime?: string | null

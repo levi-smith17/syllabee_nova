@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Copy, FileText, Loader2 } from 'lucide-react'
 import { apiFetch } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { BLOCK_META } from './shared'
+import { SectionMultiSelect, sectionLabel } from './section-multi-select'
 import type { EditorSection, MasterSyllabus, SyllabusDetail } from '@syllabee/types'
 
 // ── Content Library Dialog ────────────────────────────────────────────────────
@@ -342,27 +342,11 @@ export function ContentLibraryDialog({
                                         <p className="text-[11px] text-muted-foreground">
                                             Assign sections (optional). If none selected, this segment is shared across all sections.
                                         </p>
-                                        {availableSections.length === 0 ? (
-                                            <p className="text-[11px] text-muted-foreground italic mt-1">No sections found for this term.</p>
-                                        ) : availableSections.map(sec => (
-                                            <label key={sec.id} className="flex items-center gap-2 py-1 cursor-pointer">
-                                                <Checkbox
-                                                    checked={(segmentSections[seg.id] ?? []).includes(sec.id)}
-                                                    onCheckedChange={checked => {
-                                                        setSegmentSections(prev => {
-                                                            const curr = prev[seg.id] ?? []
-                                                            return {
-                                                                ...prev,
-                                                                [seg.id]: checked
-                                                                    ? [...curr, sec.id]
-                                                                    : curr.filter(id => id !== sec.id),
-                                                            }
-                                                        })
-                                                    }}
-                                                />
-                                                <span className="text-xs">{sec.courseId}-{sec.sectionCode}-{sec.termId}</span>
-                                            </label>
-                                        ))}
+                                        <SectionMultiSelect
+                                            sections={availableSections}
+                                            value={segmentSections[seg.id] ?? []}
+                                            onChange={ids => setSegmentSections(prev => ({ ...prev, [seg.id]: ids }))}
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -381,7 +365,7 @@ export function ContentLibraryDialog({
                                     const sectionLabels = sections
                                         .map(id => availableSections.find(s => s.id === id))
                                         .filter(Boolean)
-                                        .map(s => `${s!.courseId}-${s!.sectionCode}-${s!.termId}`)
+                                        .map(s => sectionLabel(s!))
                                     return (
                                         <div key={seg.id} className="border border-border p-3">
                                             <p className="text-xs font-medium">{seg.name}</p>

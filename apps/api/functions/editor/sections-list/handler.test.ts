@@ -34,7 +34,12 @@ describe('editor/sections-list', () => {
     beforeEach(() => vi.resetAllMocks())
 
     it('returns 200 with active sections for the authenticated user', async () => {
-        mockSend.mockResolvedValueOnce({ Items: [sectionItem('sec-1'), sectionItem('sec-2')] })
+        mockSend
+            .mockResolvedValueOnce({ Items: [sectionItem('sec-1'), sectionItem('sec-2')] })
+            // GetCommand: COURSE#CIS-211S
+            .mockResolvedValueOnce({ Item: { pk: 'COURSE#CIS-211S', sk: 'METADATA', code: 'CIS-211S' } })
+            // GetCommand: TERM#2025SS
+            .mockResolvedValueOnce({ Item: { pk: 'TERM#2025SS', sk: 'METADATA', code: '2025SS' } })
 
         const result = await handler(makeEvent()) as any
         expect(result.statusCode).toBe(200)
@@ -43,7 +48,9 @@ describe('editor/sections-list', () => {
         expect(body.data[0]).toMatchObject({
             id: 'sec-1',
             courseId: 'CIS-211S',
+            courseCode: 'CIS-211S',
             termId: '2025SS',
+            termCode: '2025SS',
             sectionCode: '801SS',
         })
     })
@@ -61,6 +68,10 @@ describe('editor/sections-list', () => {
         mockSend
             .mockResolvedValueOnce({ Items: [sectionItem('sec-1')], LastEvaluatedKey: { pk: 'SECTION#sec-1', sk: 'METADATA' } })
             .mockResolvedValueOnce({ Items: [sectionItem('sec-2')] })
+            // GetCommand: COURSE#CIS-211S
+            .mockResolvedValueOnce({ Item: { pk: 'COURSE#CIS-211S', sk: 'METADATA', code: 'CIS-211S' } })
+            // GetCommand: TERM#2025SS
+            .mockResolvedValueOnce({ Item: { pk: 'TERM#2025SS', sk: 'METADATA', code: '2025SS' } })
 
         const result = await handler(makeEvent()) as any
         expect(result.statusCode).toBe(200)

@@ -54,12 +54,12 @@ export default function PlatformLayout() {
               pages like the editor never remount and lose their column/selection state. */}
           <div className="absolute inset-0 z-0">
             <Routes location={backgroundLocation ?? location}>
-              <Route path="/editor" element={<EditorPage />} />
-              <Route path="/editor/:id" element={<EditorPage />} />
-              <Route path="/internship" element={<InternshipPage />} />
-              <Route path="/internship/:id" element={<InternshipDetailPage />} />
-              <Route path="/admin" element={<AdminIndex />} />
-              <Route path="/admin/settings" element={<SettingsPage />} />
+              <Route path="editor" element={<EditorPage />} />
+              <Route path="editor/:id" element={<EditorPage />} />
+              <Route path="internship" element={<InternshipPage />} />
+              <Route path="internship/:id" element={<InternshipDetailPage />} />
+              <Route path="admin" element={<AdminIndex />} />
+              <Route path="admin/settings" element={<SettingsPage />} />
             </Routes>
           </div>
 

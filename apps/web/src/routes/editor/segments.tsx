@@ -12,12 +12,12 @@ import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { ColHeader, Col2Mode, SEG_HEADING_OPTS } from './shared'
+import { SectionMultiSelect } from './section-multi-select'
 import { ContentLibraryDialog } from './content-library'
 import type { MasterSyllabus, SyllabusSegment, SyllabusBlock, EditorSection } from '@syllabee/types'
 
@@ -75,7 +75,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
             {/* Left action bar — sibling to content area to avoid portal event propagation */}
             <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
                 <button
-                    className="p-0.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
+                    className="p-1.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
                     {...attributes}
                     {...listeners}
                     title="Drag to reorder; move left/right to change heading level"
@@ -163,14 +163,6 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelet
         })
     }, [segment?.id])
 
-    function toggleSection(sectionId: string, checked: boolean) {
-        setForm(f => ({
-            ...f,
-            sections: checked
-                ? [...f.sections, sectionId]
-                : f.sections.filter(id => id !== sectionId),
-        }))
-    }
 
     return (
         <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -291,31 +283,12 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelet
                 <p className="text-[11px] text-muted-foreground">
                     If no sections are selected, this segment is shared across all sections.
                 </p>
-                {availableSections.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground italic">No active sections found for this term.</p>
-                ) : (
-                    <div className="flex flex-col gap-1.5 pt-0.5">
-                        {availableSections.map(sec => (
-                            <label
-                                key={sec.id}
-                                className={cn(
-                                    'flex items-center gap-2.5 py-1.5 px-2 border cursor-pointer transition-colors',
-                                    locked && 'pointer-events-none opacity-60',
-                                    form.sections.includes(sec.id) ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
-                                )}
-                            >
-                                <Checkbox
-                                    checked={form.sections.includes(sec.id)}
-                                    onCheckedChange={checked => toggleSection(sec.id, !!checked)}
-                                    disabled={locked}
-                                />
-                                <span className="text-xs">
-                                    {sec.courseId}-{sec.sectionCode}-{sec.termId}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                )}
+                <SectionMultiSelect
+                    sections={availableSections}
+                    value={form.sections}
+                    onChange={ids => setForm(f => ({ ...f, sections: ids }))}
+                    disabled={locked}
+                />
             </div>
 
             {!locked && (
@@ -325,14 +298,16 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelet
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Segment' : 'Save Segment'}
                     </Button>
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={onDelete}
-                        className="w-full rounded-none h-9 text-xs"
-                    >
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Segment
-                    </Button>
+                    {mode !== 'add' && (
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={onDelete}
+                            className="w-full rounded-none h-9 text-xs"
+                        >
+                            <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Segment
+                        </Button>
+                    )}
                 </div>
             )}
         </form>
@@ -351,6 +326,7 @@ export function SegmentColumn({
     mobileBack,
     syllabi,
     allSections,
+    terms,
     onCopySegment,
     isCopyingSegment,
 }: {
@@ -374,6 +350,7 @@ export function SegmentColumn({
     mobileBack?: () => void
     syllabi: MasterSyllabus[]
     allSections: EditorSection[]
+    terms: { id: string; code: string }[]
     onCopySegment: (sourceSyllabusId: string, sourceSegmentId: string, sections: string[]) => void
     isCopyingSegment: boolean
 }) {
@@ -386,10 +363,10 @@ export function SegmentColumn({
     const dragStartHeadingRef = React.useRef<number>(2)
     const listRef = React.useRef<HTMLDivElement>(null)
 
-    const availableSections = React.useMemo(
-        () => allSections.filter(s => s.termId === syllabus?.termCode),
-        [allSections, syllabus?.termCode],
-    )
+    const availableSections = React.useMemo(() => {
+        const termId = terms.find(t => t.code === syllabus?.termCode)?.id
+        return termId ? allSections.filter(s => s.termId === termId) : []
+    }, [allSections, terms, syllabus?.termCode])
 
     const sensors = useSensors(
         useSensor(PointerSensor),

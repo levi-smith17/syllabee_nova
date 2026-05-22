@@ -38,18 +38,18 @@ export default function App() {
 
         {/* Protected platform */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<PlatformLayout />}>
+          <Route path="/*" element={<PlatformLayout />}>
             <Route index element={<Navigate to="/editor" replace />} />
-            <Route path="/editor" element={<EditorPage />} />
-            <Route path="/editor/:id" element={<EditorPage />} />
-            <Route path="/internship" element={<InternshipPage />} />
-            <Route path="/internship/:id" element={<InternshipDetailPage />} />
-            <Route path="/registration/courses" element={<CoursesPage />} />
-            <Route path="/registration/terms" element={<TermsPage />} />
-            <Route path="/registration/sections" element={<SectionsPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
-            <Route path="/admin/quick-links" element={<QuickLinksPage />} />
-            <Route path="/admin/settings" element={<SettingsPage />} />
+            <Route path="editor" element={<EditorPage />} />
+            <Route path="editor/:id" element={<EditorPage />} />
+            <Route path="internship" element={<InternshipPage />} />
+            <Route path="internship/:id" element={<InternshipDetailPage />} />
+            <Route path="registration/courses" element={<CoursesPage />} />
+            <Route path="registration/terms" element={<TermsPage />} />
+            <Route path="registration/sections" element={<SectionsPage />} />
+            <Route path="admin/users" element={<UsersPage />} />
+            <Route path="admin/quick-links" element={<QuickLinksPage />} />
+            <Route path="admin/settings" element={<SettingsPage />} />
           </Route>
         </Route>
 

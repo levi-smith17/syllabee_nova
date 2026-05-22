@@ -28,7 +28,7 @@ export default function EditorPage() {
 
     // ── Column modes ──────────────────────────────────────────────────────────
     const [col1Mode, setCol1Mode] = React.useState<Col1Mode>('list')
-    const [col2Mode, setCol2Mode] = React.useState<Col2Mode>('hidden')
+    const [col2Mode, setCol2Mode] = React.useState<Col2Mode>(() => id ? 'segmentList' : 'hidden')
     const [col3Mode, setCol3Mode] = React.useState<Col3Mode>('blocks')
 
     // ── Selection state ───────────────────────────────────────────────────────
@@ -427,6 +427,7 @@ export default function EditorPage() {
                     isUpdating={updateSegmentMutation.isPending}
                     syllabi={syllabi}
                     allSections={allSections}
+                    terms={terms}
                     onCopySegment={(sourceSyllabusId, sourceSegmentId, sections) =>
                         copySegmentMutation.mutate({ sourceSyllabusId, sourceSegmentId, sections })
                     }

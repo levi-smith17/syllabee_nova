@@ -238,20 +238,23 @@ function GradingScaleAddForm({ onBack, onCreate, isSaving }: {
 
 // ── Edit Form ─────────────────────────────────────────────────────────────────
 
-function GradingScaleEditForm({ scale, onBack, onUpdate, isSaving }: {
+function GradingScaleEditForm({ scale, onBack, onUpdate, onDelete, isSaving }: {
     scale: GradingScale
     onBack: () => void
     onUpdate: (id: string, body: { name?: string; grades?: Omit<GradingScaleGrade, 'id' | 'scaleId'>[] }) => void
+    onDelete: (id: string) => void
     isSaving: boolean
 }) {
     const [name, setName] = React.useState(scale.name)
     const [rows, setRows] = React.useState<GradeRow[]>(
         (scale.grades ?? []).map(g => ({ letter: g.letter, minPercent: String(g.minPercent), maxPercent: String(g.maxPercent) }))
     )
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
 
     React.useEffect(() => {
         setName(scale.name)
         setRows((scale.grades ?? []).map(g => ({ letter: g.letter, minPercent: String(g.minPercent), maxPercent: String(g.maxPercent) })))
+        setDeleteConfirmOpen(false)
     }, [scale.id])
 
     function handleSubmit(e: React.FormEvent) {
@@ -293,10 +296,37 @@ function GradingScaleEditForm({ scale, onBack, onUpdate, isSaving }: {
                     <GradeRowsEditor rows={rows} onChange={setRows} />
                 </div>
 
-                <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
-                    {isSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Saving…</> : 'Save Grading Scale'}
-                </Button>
+                <div className="space-y-2 pt-2">
+                    <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
+                        {isSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Saving…</> : 'Save Grading Scale'}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setDeleteConfirmOpen(true)}
+                        className="w-full rounded-none h-9 text-xs"
+                    >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Grading Scale
+                    </Button>
+                </div>
             </form>
+
+            <Dialog open={deleteConfirmOpen} onOpenChange={v => !v && setDeleteConfirmOpen(false)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Grading Scale</DialogTitle>
+                        <DialogDescription>
+                            This will permanently delete <strong>{scale.name}</strong>. Any blocks using this scale will lose their grade reference. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={() => { setDeleteConfirmOpen(false); onDelete(scale.id) }}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
@@ -342,6 +372,7 @@ export function GradingScaleColumn({ col1Mode, setCol1Mode, scales, isLoading, o
                     scale={editingScale}
                     onBack={() => setCol1Mode('grading-scales')}
                     onUpdate={onUpdate}
+                    onDelete={id => { onDelete(id); setCol1Mode('grading-scales') }}
                     isSaving={isUpdating}
                 />
             )}
