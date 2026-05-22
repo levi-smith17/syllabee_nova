@@ -9,7 +9,7 @@ import type { BlockType } from '@syllabee/types'
 
 // ── Column mode types ─────────────────────────────────────────────────────────
 
-export type Col1Mode = 'list' | 'add' | 'edit'
+export type Col1Mode = 'list' | 'add' | 'edit' | 'grading-scales' | 'grading-scale-add' | 'grading-scale-edit'
 export type Col2Mode = 'hidden' | 'segmentList' | 'segmentAdd' | 'segmentEdit'
 export type Col3Mode = 'blocks' | 'picker' | 'addBlock' | 'editBlock'
 

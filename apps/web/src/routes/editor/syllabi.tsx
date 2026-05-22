@@ -1,5 +1,5 @@
 import React from 'react'
-import { Lock, Unlock, Trash2, Pencil, Search, X, ChevronDown, Loader2, MoreHorizontal, BookOpen } from 'lucide-react'
+import { Lock, Unlock, Trash2, Pencil, Search, X, ChevronDown, Loader2, MoreHorizontal, BookOpen, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ColHeader, AddButton, Col1Mode } from './shared'
-import type { MasterSyllabus } from '@syllabee/types'
+import { GradingScaleColumn } from './grading-scales'
+import type { MasterSyllabus, GradingScale, GradingScaleGrade } from '@syllabee/types'
 
 // ── Syllabi list ──────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ function SyllabusList({ syllabi, isLoading, selectedId, onSelect, onEdit, onLock
                         className="flex-1 min-w-0 bg-transparent text-xs px-2 outline-none placeholder:text-muted-foreground"
                     />
                     {search && (
-                        <button onClick={() => setSearch('')} className="mr-1.5 text-muted-foreground hover:text-foreground">
+                        <button onClick={() => setSearch('')} className="mr-1 text-muted-foreground hover:text-foreground">
                             <X className="h-3 w-3" />
                         </button>
                     )}
@@ -509,6 +510,9 @@ export function SyllabusColumn({
     onSelectSyllabus, onEditSyllabus,
     onCreateSyllabus, onUpdateSyllabus, onDeleteSyllabus, onToggleLock,
     isCreating, isUpdating,
+    gradingScales, gradingScalesLoading,
+    onCreateGradingScale, onUpdateGradingScale, onDeleteGradingScale,
+    isCreatingGradingScale, isUpdatingGradingScale,
 }: {
     syllabi: MasterSyllabus[]
     syllabiLoading: boolean
@@ -526,12 +530,42 @@ export function SyllabusColumn({
     onToggleLock: (syllabusId: string) => void
     isCreating: boolean
     isUpdating: boolean
+    gradingScales: GradingScale[]
+    gradingScalesLoading: boolean
+    onCreateGradingScale: (body: { name: string; grades: Omit<GradingScaleGrade, 'id' | 'scaleId'>[] }) => void
+    onUpdateGradingScale: (id: string, body: { name?: string; grades?: Omit<GradingScaleGrade, 'id' | 'scaleId'>[] }) => void
+    onDeleteGradingScale: (id: string) => void
+    isCreatingGradingScale: boolean
+    isUpdatingGradingScale: boolean
 }) {
+    const isGradingScaleMode = col1Mode === 'grading-scales' || col1Mode === 'grading-scale-add' || col1Mode === 'grading-scale-edit'
+
     return (
         <div className="w-full md:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
+            {isGradingScaleMode && (
+                <GradingScaleColumn
+                    col1Mode={col1Mode}
+                    setCol1Mode={setCol1Mode}
+                    scales={gradingScales}
+                    isLoading={gradingScalesLoading}
+                    onCreate={onCreateGradingScale}
+                    onUpdate={onUpdateGradingScale}
+                    onDelete={onDeleteGradingScale}
+                    isCreating={isCreatingGradingScale}
+                    isUpdating={isUpdatingGradingScale}
+                />
+            )}
+
             {col1Mode === 'list' && (
                 <>
                     <ColHeader title="Syllabi" subtitle="" icon={<BookOpen className="h-5 w-5" />}>
+                        <button
+                            onClick={() => setCol1Mode('grading-scales')}
+                            title="Grading Scales"
+                            className="p-1 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors shrink-0"
+                        >
+                            <BarChart3 className="h-5 w-5" />
+                        </button>
                         <AddButton onClick={() => setCol1Mode('add')} />
                     </ColHeader>
                     <SyllabusList

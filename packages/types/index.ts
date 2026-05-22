@@ -164,6 +164,7 @@ export interface GradingScale {
   name: string
   ownerId: string
   createdAt: string
+  grades: GradingScaleGrade[]
 }
 
 export interface GradingScaleGrade {

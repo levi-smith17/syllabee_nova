@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api/client'
-import type { MasterSyllabus, SyllabusDetail, GradingScale, BlockType, EditorSection } from '@syllabee/types'
+import type { MasterSyllabus, SyllabusDetail, GradingScale, GradingScaleGrade, BlockType, EditorSection } from '@syllabee/types'
 import type { Col1Mode, Col2Mode, Col3Mode } from './shared'
 import { SyllabusColumn } from './syllabi'
 import { SegmentColumn } from './segments'
@@ -77,10 +77,9 @@ export default function EditorPage() {
         enabled: !!id,
     })
 
-    const { data: gradingScales = [] } = useQuery({
+    const { data: gradingScales = [], isLoading: gradingScalesLoading } = useQuery({
         queryKey: ['grading-scales'],
         queryFn: () => apiFetch<{ data: GradingScale[] }>('/editor/grading-scales').then(r => r.data ?? []),
-        enabled: !!id,
     })
 
     const { data: allSections = [] } = useQuery({
@@ -145,6 +144,39 @@ export default function EditorPage() {
             toast.success(l ? 'Locked' : 'Unlocked')
         },
         onError: () => toast.error('Failed to update lock'),
+    })
+
+    // ── Mutations: Grading Scales ─────────────────────────────────────────────
+
+    const createGradingScaleMutation = useMutation({
+        mutationFn: (body: { name: string; grades: Omit<GradingScaleGrade, 'id' | 'scaleId'>[] }) =>
+            apiFetch<{ data: { id: string } }>('/editor/grading-scales', { method: 'POST', body: JSON.stringify(body) }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['grading-scales'] })
+            toast.success('Grading scale created')
+            setCol1Mode('grading-scales')
+        },
+        onError: () => toast.error('Failed to create grading scale'),
+    })
+
+    const updateGradingScaleMutation = useMutation({
+        mutationFn: ({ id: scaleId, body }: { id: string; body: { name?: string; grades?: Omit<GradingScaleGrade, 'id' | 'scaleId'>[] } }) =>
+            apiFetch(`/editor/grading-scales/${scaleId}`, { method: 'PUT', body: JSON.stringify(body) }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['grading-scales'] })
+            toast.success('Grading scale saved')
+            setCol1Mode('grading-scales')
+        },
+        onError: () => toast.error('Failed to save grading scale'),
+    })
+
+    const deleteGradingScaleMutation = useMutation({
+        mutationFn: (scaleId: string) => apiFetch(`/editor/grading-scales/${scaleId}`, { method: 'DELETE' }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['grading-scales'] })
+            toast.success('Grading scale deleted')
+        },
+        onError: () => toast.error('Failed to delete grading scale'),
     })
 
     // ── Mutations: Segments ───────────────────────────────────────────────────
@@ -355,6 +387,13 @@ export default function EditorPage() {
                 }}
                 isCreating={createSyllabusMutation.isPending}
                 isUpdating={updateSyllabusMutation.isPending}
+                gradingScales={gradingScales}
+                gradingScalesLoading={gradingScalesLoading}
+                onCreateGradingScale={body => createGradingScaleMutation.mutate(body)}
+                onUpdateGradingScale={(scaleId, body) => updateGradingScaleMutation.mutate({ id: scaleId, body })}
+                onDeleteGradingScale={scaleId => deleteGradingScaleMutation.mutate(scaleId)}
+                isCreatingGradingScale={createGradingScaleMutation.isPending}
+                isUpdatingGradingScale={updateGradingScaleMutation.isPending}
             />}
 
             {showCol2 && (!isMobile || mobileActiveCol === 'col2') && (

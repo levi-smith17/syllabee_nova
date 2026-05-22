@@ -319,17 +319,20 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, onDelet
             </div>
 
             {!locked && (
-                <div className="flex gap-2 pt-2">
-                    <Button type="submit" disabled={isSaving} className="flex-1 rounded-none h-9 bg-primary text-black hover:bg-primary/80">
+                <div className="space-y-2 pt-2">
+                    <Button type="submit" disabled={isSaving} className="w-full flex-1 rounded-none h-9 bg-primary text-black hover:bg-primary/80">
                         {isSaving
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Segment' : 'Save Segment'}
                     </Button>
-                    {mode === 'edit' && onDelete && (
-                        <Button type="button" variant="destructive" size="icon" className="h-9 w-9 rounded-none shrink-0" onClick={onDelete}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={onDelete}
+                        className="w-full rounded-none h-9 text-xs"
+                    >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />Delete Segment
+                    </Button>
                 </div>
             )}
         </form>
