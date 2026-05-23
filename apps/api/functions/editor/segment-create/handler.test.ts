@@ -14,6 +14,11 @@ vi.mock('../../shared/auth', () => ({
     getPathId: (event: any) => event.pathParameters?.id,
 }))
 
+vi.mock('../../shared/sync-section-syllabus', () => ({
+    MasterSyllabusConflictError: class MasterSyllabusConflictError extends Error {},
+    syncAfterSegmentSectionsChange: vi.fn(async () => {}),
+}))
+
 const makeEvent = (id: string | undefined, body: object) => ({
     requestContext: { authorizer: { jwt: { claims: { sub: 'instructor-1' } } } },
     body: JSON.stringify(body),

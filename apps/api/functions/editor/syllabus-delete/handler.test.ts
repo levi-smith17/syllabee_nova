@@ -14,6 +14,10 @@ vi.mock('../../shared/auth', () => ({
     getPathId: (event: any) => event.pathParameters?.id,
 }))
 
+vi.mock('../../shared/sync-section-syllabus', () => ({
+    clearMasterSyllabusForSyllabus: vi.fn(async () => {}),
+}))
+
 import { isAdmin } from '../../shared/auth'
 
 const makeEvent = (id?: string) => ({

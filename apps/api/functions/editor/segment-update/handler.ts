@@ -3,6 +3,10 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 }
 import { dynamo, TABLE_NAME } from '../../shared/db'
 import { getUserId, isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, ok, badRequest, forbidden, notFound, conflict, serverError } from '../../shared/response'
+import {
+    MasterSyllabusConflictError,
+    syncAfterSegmentSectionsChange,
+} from '../../shared/sync-section-syllabus'
 
 const UPDATABLE_FIELDS = ['name', 'description', 'printHeading', 'printingOptional', 'isVisible', 'sections'] as const
 
@@ -30,6 +34,16 @@ export const handler = async (
         const updates = UPDATABLE_FIELDS.filter(f => f in body)
         if (updates.length === 0) return toApiGatewayResponse(badRequest('No updatable fields provided'))
 
+        let previousSections: string[] | undefined
+        if ('sections' in body) {
+            const segExisting = await dynamo.send(new GetCommand({
+                TableName: TABLE_NAME,
+                Key: { pk: `SYLLABUS#${id}`, sk: `SEG#${segmentId}` },
+                ProjectionExpression: 'sections',
+            }))
+            previousSections = (segExisting.Item?.sections as string[]) ?? []
+        }
+
         const setExpr = updates.map(f => `#${f} = :${f}`).join(', ')
         const exprNames: Record<string, string> = {}
         const exprValues: Record<string, unknown> = {}
@@ -46,8 +60,20 @@ export const handler = async (
             ExpressionAttributeValues: exprValues,
         }))
 
+        if ('sections' in body) {
+            await syncAfterSegmentSectionsChange({
+                syllabusId: id,
+                termCode: existing.Item.termCode as string | null | undefined,
+                newSections: body.sections as string[],
+                previousSections,
+            })
+        }
+
         return toApiGatewayResponse(ok({ id: segmentId }))
     } catch (err) {
+        if (err instanceof MasterSyllabusConflictError) {
+            return toApiGatewayResponse(conflict(err.message))
+        }
         console.error(err)
         return toApiGatewayResponse(serverError())
     }

@@ -14,6 +14,11 @@ vi.mock('../../shared/auth', () => ({
     getPathId: (event: any) => event.pathParameters?.id,
 }))
 
+vi.mock('../../shared/sync-section-syllabus', () => ({
+    MasterSyllabusConflictError: class MasterSyllabusConflictError extends Error {},
+    syncAfterSegmentDelete: vi.fn(async () => {}),
+}))
+
 const makeEvent = (id: string | undefined, segmentId: string | undefined) => ({
     requestContext: { authorizer: { jwt: { claims: { sub: 'instructor-1' } } } },
     pathParameters: { id, segmentId },
@@ -42,24 +47,28 @@ describe('editor/segment-delete', () => {
     })
 
     it('deletes segment and associated blocks and returns 204', async () => {
-        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
-        mockSend.mockResolvedValueOnce({ Items: [{ pk: 'SYLLABUS#s1', sk: 'BLK#seg1#blk1' }] })
+        mockSend
+            .mockResolvedValueOnce({ Item: syllabusItem })
+            .mockResolvedValueOnce({ Item: { sections: ['sec-1'] } })
+            .mockResolvedValueOnce({ Items: [{ pk: 'SYLLABUS#s1', sk: 'BLK#seg1#blk1' }] })
         mockSend.mockResolvedValue({})
 
         const result = await handler(makeEvent('s1', 'seg1')) as any
         expect(result.statusCode).toBe(204)
-        // 1 get + 1 query + 2 deletes (SEG# + BLK#)
-        expect(mockSend).toHaveBeenCalledTimes(4)
+        // syllabus get + segment get + block query + 2 deletes
+        expect(mockSend).toHaveBeenCalledTimes(5)
     })
 
     it('deletes segment with no blocks and returns 204', async () => {
-        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
-        mockSend.mockResolvedValueOnce({ Items: [] })
+        mockSend
+            .mockResolvedValueOnce({ Item: syllabusItem })
+            .mockResolvedValueOnce({ Item: { sections: [] } })
+            .mockResolvedValueOnce({ Items: [] })
         mockSend.mockResolvedValueOnce({})
 
         const result = await handler(makeEvent('s1', 'seg1')) as any
         expect(result.statusCode).toBe(204)
-        expect(mockSend).toHaveBeenCalledTimes(3) // 1 get + 1 query + 1 delete (SEG# only)
+        expect(mockSend).toHaveBeenCalledTimes(4)
     })
 
     it('returns 500 on DynamoDB error', async () => {

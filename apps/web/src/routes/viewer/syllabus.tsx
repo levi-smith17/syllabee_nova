@@ -2,7 +2,7 @@ import React from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Printer, ChevronLeft, ChevronRight } from 'lucide-react'
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/hooks/use-auth'
 import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
@@ -58,13 +58,19 @@ export default function SyllabusViewerPage() {
     const navigate = useNavigate()
     const { user } = useAuth()
 
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isError, error } = useQuery({
         queryKey: ['viewer', courseCode, termCode, sectionCode],
         queryFn: () =>
             apiFetch<{ data: ViewerResponse }>(`/viewer/${courseCode}/${sectionCode}/${termCode}`)
                 .then(r => r.data!),
         enabled: !!courseCode && !!termCode && !!sectionCode,
     })
+
+    const viewerErrorMessage = error instanceof ApiError
+        ? error.message
+        : isError
+            ? 'Syllabus not found.'
+            : null
 
     const { data: quickLinkData } = useQuery({
         queryKey: ['quick-links'],
@@ -114,8 +120,10 @@ export default function SyllabusViewerPage() {
     if (isError || !data) {
         return (
             <SidebarProvider>
-                <div className="flex h-screen items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Syllabus not found.</p>
+                <div className="flex h-screen items-center justify-center px-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                        {viewerErrorMessage ?? 'Syllabus not found.'}
+                    </p>
                 </div>
             </SidebarProvider>
         )

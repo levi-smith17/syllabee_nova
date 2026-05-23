@@ -3,6 +3,10 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 }
 import { dynamo, TABLE_NAME } from '../../shared/db'
 import { getUserId, isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, noContent, forbidden, notFound, conflict, serverError } from '../../shared/response'
+import {
+    MasterSyllabusConflictError,
+    syncAfterSegmentDelete,
+} from '../../shared/sync-section-syllabus'
 
 export const handler = async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer
@@ -24,6 +28,13 @@ export const handler = async (
         }
         if (existing.Item.locked) return toApiGatewayResponse(conflict('Syllabus is locked'))
 
+        const segItem = await dynamo.send(new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: `SYLLABUS#${id}`, sk: `SEG#${segmentId}` },
+            ProjectionExpression: 'sections',
+        }))
+        const deletedSections = (segItem.Item?.sections as string[]) ?? []
+
         // Collect the SEG# item + all BLK#segmentId# items
         const blkRes = await dynamo.send(new QueryCommand({
             TableName: TABLE_NAME,
@@ -40,8 +51,17 @@ export const handler = async (
             dynamo.send(new DeleteCommand({ TableName: TABLE_NAME, Key: key }))
         ))
 
+        await syncAfterSegmentDelete({
+            syllabusId: id,
+            termCode: existing.Item.termCode as string | null | undefined,
+            deletedSections,
+        })
+
         return toApiGatewayResponse(noContent())
     } catch (err) {
+        if (err instanceof MasterSyllabusConflictError) {
+            return toApiGatewayResponse(conflict(err.message))
+        }
         console.error(err)
         return toApiGatewayResponse(serverError())
     }

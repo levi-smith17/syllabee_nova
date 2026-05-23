@@ -120,57 +120,10 @@ export const handler = async (
 
         const sectionId = (sectionItem.pk as string).replace('SECTION#', '')
 
-        // ── Resolve masterSyllabusId ──────────────────────────────────────────
-        let masterSyllabusId = sectionItem.masterSyllabusId as string | undefined
-
+        const masterSyllabusId = sectionItem.masterSyllabusId as string | undefined
         if (!masterSyllabusId) {
-            // Fallback 1: find a syllabus via a segment that explicitly lists this sectionId
-            let segLastKey: Record<string, unknown> | undefined
-            do {
-                const segScan = await dynamo.send(new ScanCommand({
-                    TableName: TABLE_NAME,
-                    FilterExpression: 'begins_with(pk, :prefix) AND begins_with(sk, :skPrefix) AND contains(#sections, :sid)',
-                    ExpressionAttributeNames: { '#sections': 'sections' },
-                    ExpressionAttributeValues: {
-                        ':prefix': 'SYLLABUS#',
-                        ':skPrefix': 'SEG#',
-                        ':sid': sectionId,
-                    },
-                    ProjectionExpression: 'pk',
-                    ExclusiveStartKey: segLastKey,
-                }))
-                if (segScan.Items?.length) {
-                    masterSyllabusId = (segScan.Items[0].pk as string).replace('SYLLABUS#', '')
-                    break
-                }
-                segLastKey = segScan.LastEvaluatedKey as Record<string, unknown> | undefined
-            } while (segLastKey)
+            return toApiGatewayResponse(notFound('No syllabus assigned to this section'))
         }
-
-        if (!masterSyllabusId) {
-            // Fallback 2: find a syllabus by termCode (covers syllabi whose segments apply to all sections)
-            let sylLastKey: Record<string, unknown> | undefined
-            do {
-                const sylScan = await dynamo.send(new ScanCommand({
-                    TableName: TABLE_NAME,
-                    FilterExpression: 'begins_with(pk, :prefix) AND sk = :sk AND termCode = :tc',
-                    ExpressionAttributeValues: {
-                        ':prefix': 'SYLLABUS#',
-                        ':sk': 'METADATA',
-                        ':tc': upperTerm,
-                    },
-                    ProjectionExpression: 'pk',
-                    ExclusiveStartKey: sylLastKey,
-                }))
-                if (sylScan.Items?.length) {
-                    masterSyllabusId = (sylScan.Items[0].pk as string).replace('SYLLABUS#', '')
-                    break
-                }
-                sylLastKey = sylScan.LastEvaluatedKey as Record<string, unknown> | undefined
-            } while (sylLastKey)
-        }
-
-        //if (!masterSyllabusId) return toApiGatewayResponse(notFound('No syllabus assigned to this section'))
 
         // ── Fetch course name, syllabus data, and branding in parallel ────────
         const [courseDetail, syllabusRes, brandingItem] = await Promise.all([

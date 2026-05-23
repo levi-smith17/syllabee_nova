@@ -3,6 +3,7 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 }
 import { dynamo, TABLE_NAME } from '../../shared/db'
 import { getUserId, isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, noContent, forbidden, notFound, conflict, serverError } from '../../shared/response'
+import { clearMasterSyllabusForSyllabus } from '../../shared/sync-section-syllabus'
 
 export const handler = async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer
@@ -26,6 +27,8 @@ export const handler = async (
             return toApiGatewayResponse(forbidden())
         }
         if (metadata.locked) return toApiGatewayResponse(conflict('Syllabus is locked'))
+
+        await clearMasterSyllabusForSyllabus(id)
 
         await Promise.all(items.map(item =>
             dynamo.send(new DeleteCommand({

@@ -4,6 +4,10 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 }
 import { dynamo, TABLE_NAME } from '../../shared/db'
 import { getUserId, isAdmin, getPathId } from '../../shared/auth'
 import { toApiGatewayResponse, created, badRequest, forbidden, notFound, conflict, serverError } from '../../shared/response'
+import {
+    MasterSyllabusConflictError,
+    syncAfterSegmentSectionsChange,
+} from '../../shared/sync-section-syllabus'
 
 export const handler = async (
     event: APIGatewayProxyEventV2WithJWTAuthorizer
@@ -38,6 +42,7 @@ export const handler = async (
         const maxOrder = (segRes.Items ?? []).reduce((m, i) => Math.max(m, i.sortOrder ?? 0), -1)
 
         const segId = randomUUID()
+        const sectionIds = (sections ?? []) as string[]
         await dynamo.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: {
@@ -49,13 +54,22 @@ export const handler = async (
                 printHeading: printHeading ?? 2,
                 printingOptional: printingOptional ?? false,
                 isVisible: isVisible ?? false,
-                sections: sections ?? [],
+                sections: sectionIds,
                 sortOrder: maxOrder + 1,
             },
         }))
 
+        await syncAfterSegmentSectionsChange({
+            syllabusId: id,
+            termCode: existing.Item.termCode as string | null | undefined,
+            newSections: sectionIds,
+        })
+
         return toApiGatewayResponse(created({ id: segId }))
     } catch (err) {
+        if (err instanceof MasterSyllabusConflictError) {
+            return toApiGatewayResponse(conflict(err.message))
+        }
         console.error(err)
         return toApiGatewayResponse(serverError())
     }

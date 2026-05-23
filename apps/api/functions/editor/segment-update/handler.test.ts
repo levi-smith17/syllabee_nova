@@ -14,6 +14,11 @@ vi.mock('../../shared/auth', () => ({
     getPathId: (event: any) => event.pathParameters?.id,
 }))
 
+vi.mock('../../shared/sync-section-syllabus', () => ({
+    MasterSyllabusConflictError: class MasterSyllabusConflictError extends Error {},
+    syncAfterSegmentSectionsChange: vi.fn(async () => {}),
+}))
+
 const makeEvent = (id: string | undefined, segmentId: string | undefined, body: object) => ({
     requestContext: { authorizer: { jwt: { claims: { sub: 'instructor-1' } } } },
     body: JSON.stringify(body),
@@ -49,8 +54,9 @@ describe('editor/segment-update', () => {
     })
 
     it('updates segment and returns 200', async () => {
-        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
-        mockSend.mockResolvedValueOnce({})
+        mockSend
+            .mockResolvedValueOnce({ Item: syllabusItem })
+            .mockResolvedValueOnce({})
         const result = await handler(makeEvent('s1', 'seg1', { name: 'Updated', isVisible: false })) as any
         expect(result.statusCode).toBe(200)
         const updateArg = mockSend.mock.calls[1][0]
@@ -58,20 +64,24 @@ describe('editor/segment-update', () => {
     })
 
     it('updates sections field', async () => {
-        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
-        mockSend.mockResolvedValueOnce({})
+        mockSend
+            .mockResolvedValueOnce({ Item: syllabusItem })
+            .mockResolvedValueOnce({ Item: { sections: [] } })
+            .mockResolvedValueOnce({})
         const result = await handler(makeEvent('s1', 'seg1', { sections: ['sec-1', 'sec-2'] })) as any
         expect(result.statusCode).toBe(200)
-        const updateArg = mockSend.mock.calls[1][0]
+        const updateArg = mockSend.mock.calls[2][0]
         expect(updateArg.input.ExpressionAttributeValues[':sections']).toEqual(['sec-1', 'sec-2'])
     })
 
     it('updates sections to empty array (removes all)', async () => {
-        mockSend.mockResolvedValueOnce({ Item: syllabusItem })
-        mockSend.mockResolvedValueOnce({})
+        mockSend
+            .mockResolvedValueOnce({ Item: syllabusItem })
+            .mockResolvedValueOnce({ Item: { sections: ['sec-1'] } })
+            .mockResolvedValueOnce({})
         const result = await handler(makeEvent('s1', 'seg1', { sections: [] })) as any
         expect(result.statusCode).toBe(200)
-        const updateArg = mockSend.mock.calls[1][0]
+        const updateArg = mockSend.mock.calls[2][0]
         expect(updateArg.input.ExpressionAttributeValues[':sections']).toEqual([])
     })
 
