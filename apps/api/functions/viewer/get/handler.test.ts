@@ -98,12 +98,13 @@ describe('viewer/get', () => {
 
     it('returns 404 when section has no masterSyllabusId', async () => {
         // courseGsi → found, termGsi → found, sectionGsi → found (no masterSyllabusId),
-        // segmentScan fallback → empty → 404
+        // fallback1 segScan → empty, fallback2 sylScan (by termCode) → empty → 404
         mockSend
             .mockResolvedValueOnce({ Items: [courseItem] })
             .mockResolvedValueOnce({ Items: [termItem] })
             .mockResolvedValueOnce({ Items: [{ ...sectionItem, masterSyllabusId: undefined }] })
-            .mockResolvedValueOnce({ Items: [] })
+            .mockResolvedValueOnce({ Items: [] })  // fallback1: segment scan
+            .mockResolvedValueOnce({ Items: [] })  // fallback2: termCode scan
         const result = await handler(makeEvent('CIS-121S', '2025SS', '801SS')) as any
         expect(result.statusCode).toBe(404)
     })
