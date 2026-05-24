@@ -35,7 +35,6 @@
     "@radix-ui/react-toast": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@syllabee/types": "workspace:*",
-    "@tailwindcss/typography": "latest",
     "@tailwindcss/vite": "latest",
     "@tanstack/react-query": "latest",
     "@tiptap/extension-character-count": "latest",
@@ -69,6 +68,7 @@
   },
   "devDependencies": {
     "@syllabee/config": "workspace:*",
+    "@tailwindcss/typography": "latest",
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
     "@testing-library/user-event": "latest",

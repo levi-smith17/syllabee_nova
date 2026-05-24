@@ -1,13 +1,15 @@
 import React from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Printer, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChartBar, ChevronLeft, ChevronRight, FileText, Pencil, Presentation, Printer } from 'lucide-react'
 import { apiFetch, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/hooks/use-auth'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { BLOCK_META } from '@/routes/editor/shared'
 import { BlockRenderer } from './block-renderer'
@@ -57,8 +59,10 @@ export default function SyllabusViewerPage() {
     const [searchParams, setSearchParams] = useSearchParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { data: profile } = useCurrentUser({ enabled: !!user })
+    const isAdmin = !!profile?.isAdmin
 
-    const { data, isLoading, isError, error } = useQuery({
+    const { data, isPending, isError, error } = useQuery({
         queryKey: ['viewer', courseCode, termCode, sectionCode],
         queryFn: () =>
             apiFetch<{ data: ViewerResponse }>(`/viewer/${courseCode}/${sectionCode}/${termCode}`)
@@ -107,60 +111,34 @@ export default function SyllabusViewerPage() {
         return mode ? `${base}?mode=${mode}` : base
     }
 
-    if (isLoading) {
-        return (
-            <SidebarProvider>
-                <div className="flex h-screen items-center justify-center">
-                    <p className="text-sm text-muted-foreground">Loading syllabus…</p>
-                </div>
-            </SidebarProvider>
-        )
-    }
-
-    if (isError || !data) {
-        return (
-            <SidebarProvider>
-                <div className="flex h-screen items-center justify-center px-6 text-center">
-                    <p className="text-sm text-muted-foreground">
-                        {viewerErrorMessage ?? 'Syllabus not found.'}
-                    </p>
-                </div>
-            </SidebarProvider>
-        )
-    }
-
     return (
         <SidebarProvider>
             <div className="flex h-screen overflow-hidden">
-                {/* Left sidebar — shown for all users */}
                 <Sidebar
-                    isAdmin={false}
+                    isAdmin={isAdmin}
                     quickLinks={publicLinks.map(l => ({ id: l.id, label: l.label, url: l.url, icon: l.icon ?? '' }))}
                     restrictedQuickLinks={restrictedLinks.map(l => ({ id: l.id, label: l.label, url: l.url, icon: l.icon ?? '' }))}
                 />
 
-                {/* Content + ToC grid */}
                 <div
                     className="flex-1 overflow-hidden grid"
                     style={{ gridTemplateColumns: '4fr 2fr' }}
                 >
-                    {/* ── Main content column ──────────────────────────────── */}
                     <div className="flex flex-col overflow-hidden">
-                        {/* Sticky header */}
-                        <div className="shrink-0 bg-primary text-primary-foreground px-8 py-5">
-                            <h1 className="text-xl font-bold leading-tight">
-                                {data.section.courseCode} - {data.section.courseName} - {data.section.termName}
-                            </h1>
-                            {data.branding.institutionName && (
-                                <p className="text-sm text-primary-foreground/70 mt-1">
-                                    {data.branding.institutionName}
-                                </p>
-                            )}
-                        </div>
+                        <ViewerHeader
+                            loading={isPending}
+                            courseCode={courseCode}
+                            termCode={termCode}
+                            section={data?.section}
+                            institutionName={data?.branding.institutionName}
+                        />
 
-                        {/* Scrollable content */}
-                        <main className="flex-1 overflow-y-auto px-8 py-6">
-                            {!isAvailable ? (
+                        <main className="flex-1 overflow-y-auto p-3">
+                            {isPending ? (
+                                <ViewerContentSkeleton />
+                            ) : isError || !data ? (
+                                <ViewerErrorMessage message={viewerErrorMessage ?? 'Syllabus not found.'} />
+                            ) : !isAvailable ? (
                                 <UnavailableMessage />
                             ) : isInteractive ? (
                                 <InteractiveContent
@@ -175,25 +153,125 @@ export default function SyllabusViewerPage() {
                         </main>
                     </div>
 
-                    {/* ── ToC column ───────────────────────────────────────── */}
-                    <aside className="border-l overflow-y-auto px-4 py-4 space-y-0">
-                        <TocColumn
-                            syllabus={syllabus!}
-                            segments={segments}
-                            allBlocks={allBlocks}
-                            isInteractive={isInteractive}
-                            isAvailable={isAvailable}
-                            canSeeAll={canSeeAll}
-                            currentIndex={currentIndex}
-                            setCurrentIndex={setCurrentIndex}
-                            onInteractiveView={() => navigate(viewerUrl())}
-                            onCompleteView={() => navigate(viewerUrl('complete'))}
-                            onEditorView={() => navigate('/editor')}
-                        />
+                    <aside className="bg-sidebar border-l overflow-y-auto px-4 py-4 space-y-0">
+                        {isPending ? (
+                            <ViewerTocSkeleton />
+                        ) : isError || !data ? (
+                            <ViewerTocSkeleton />
+                        ) : (
+                            <TocColumn
+                                syllabus={syllabus!}
+                                segments={segments}
+                                allBlocks={allBlocks}
+                                isInteractive={isInteractive}
+                                isAvailable={isAvailable}
+                                canSeeAll={canSeeAll}
+                                currentIndex={currentIndex}
+                                setCurrentIndex={setCurrentIndex}
+                                onInteractiveView={() => navigate(viewerUrl())}
+                                onCompleteView={() => navigate(viewerUrl('complete'))}
+                                onEditorView={() => navigate(`/editor/${syllabus!.id}`)}
+                            />
+                        )}
                     </aside>
                 </div>
             </div>
         </SidebarProvider>
+    )
+}
+
+// ── Loading / shell helpers ───────────────────────────────────────────────────
+
+function ViewerHeader({
+    loading,
+    courseCode,
+    termCode,
+    section,
+    institutionName,
+}: {
+    loading: boolean
+    courseCode?: string
+    termCode?: string
+    section?: ViewerSection
+    institutionName?: string | null
+}) {
+    return (
+        <div className="shrink-0 bg-primary text-primary-foreground px-8 py-5">
+            <h1 className="text-xl font-bold leading-tight">
+                {loading ? (
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>{courseCode ?? '—'}</span>
+                        <span>-</span>
+                        <Skeleton className="h-6 w-48 max-w-full bg-primary-foreground/25" />
+                        <span>-</span>
+                        <span>{termCode ?? '—'}</span>
+                    </span>
+                ) : (
+                    <>
+                        {section!.courseCode} - {section!.courseName} - {section!.termName}
+                    </>
+                )}
+            </h1>
+            {loading ? (
+                <Skeleton className="h-4 w-40 mt-2 bg-primary-foreground/20" />
+            ) : institutionName ? (
+                <p className="text-sm text-primary-foreground/70 mt-1">{institutionName}</p>
+            ) : null}
+        </div>
+    )
+}
+
+function ViewerContentSkeleton() {
+    return (
+        <div className="space-y-10" aria-busy="true" aria-label="Loading syllabus content">
+            {[0, 1, 2].map(i => (
+                <div key={i} className="space-y-4">
+                    <Skeleton className="h-7 w-2/3 max-w-md" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    {i === 0 && <Skeleton className="h-16 w-full" />}
+                </div>
+            ))}
+        </div>
+    )
+}
+
+function ViewerTocSkeleton() {
+    const rowWidths = ['w-full', 'w-5/6', 'w-4/5', 'w-full', 'w-3/4', 'w-5/6']
+    return (
+        <div className="text-sm space-y-4" aria-busy="true" aria-label="Loading table of contents">
+            <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    Instructor
+                </p>
+                <Skeleton className="h-3 w-full mb-2" />
+                <Skeleton className="h-3 w-4/5" />
+            </div>
+            <Separator />
+            <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    Contents
+                </p>
+                <div className="space-y-2 mt-2">
+                    <Skeleton className="h-3.5 w-2/3" />
+                    {rowWidths.map((w, i) => (
+                        <Skeleton
+                            key={i}
+                            className={cn('h-3', w, i % 3 === 1 && 'ml-3', i % 3 === 2 && 'ml-6')}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function ViewerErrorMessage({ message }: { message: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
+            <p className="text-lg font-semibold mb-2">Unable to load syllabus</p>
+            <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
     )
 }
 
@@ -220,7 +298,7 @@ function CompleteContent({
     syllabus: MasterSyllabus
 }) {
     return (
-        <div className="space-y-10 max-w-3xl">
+        <div className="space-y-3">
             {segments.map(seg => {
                 const HeadingTag = `h${Math.min(6, Math.max(2, seg.printHeading))}` as React.ElementType
                 const blocks = [...seg.blocks].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -241,9 +319,9 @@ function CompleteContent({
                 }
 
                 return (
-                    <section key={seg.id} id={seg.id}>
+                    <section key={seg.id} id={seg.id} className="space-y-3">
                         <HeadingTag className={cn(
-                            'font-bold mb-4 text-foreground',
+                            'font-bold bg-card text-card-foreground p-8 shadow-2xl',
                             seg.printHeading === 2 && 'text-2xl',
                             seg.printHeading === 3 && 'text-xl',
                             seg.printHeading === 4 && 'text-lg',
@@ -252,7 +330,7 @@ function CompleteContent({
                             {seg.name}
                         </HeadingTag>
 
-                        <div className="space-y-6">
+                        <div className="space-y-3">
                             {grouped.map((item, idx) => {
                                 if (Array.isArray(item)) {
                                     return (
@@ -267,7 +345,12 @@ function CompleteContent({
                                 }
                                 if (item.type === 'response_block') return null
                                 return (
-                                    <div key={item.id} id={item.id}>
+                                    <div
+                                        key={item.id}
+                                        id={item.id}
+                                        className="bg-card text-card-foreground border-l-solid border-l-sidebar-foreground shadow-2xl"
+                                        style={{ borderLeftWidth: `${(seg.printHeading * 14) - 14}px` }}
+                                    >
                                         <BlockRenderer block={item} isInteractive={false} />
                                     </div>
                                 )
@@ -404,8 +487,11 @@ function TocColumn({
                 </p>
                 {syllabus.officeHours && (
                     <div className="mb-1">
-                        <span className="text-xs text-muted-foreground font-medium">Office Hours: </span>
-                        <span className="text-xs">{syllabus.officeHours}</span>
+                        <p className="text-xs text-muted-foreground font-medium mb-1">Office Hours</p>
+                        <div
+                            className="prose prose-sm max-w-none text-xs text-foreground [&_*]:text-xs [&_p]:my-0.5"
+                            dangerouslySetInnerHTML={{ __html: syllabus.officeHours }}
+                        />
                     </div>
                 )}
                 <p className="text-xs text-muted-foreground italic">Instructor info coming soon.</p>
@@ -418,40 +504,40 @@ function TocColumn({
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                             Instructor Options
                         </p>
-                        <div className="flex flex-col gap-1.5">
+                        <div className="space-y-1">
                             {syllabus.interactiveView && (
                                 <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    className="w-full justify-start text-xs"
+                                    className="flex gap-3 w-full justify-start text-sm font-normal px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                     onClick={onInteractiveView}
                                 >
-                                    Interactive View
+                                    <Presentation className="h-4 w-4 shrink-0" />Interactive View
                                 </Button>
                             )}
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="w-full justify-start text-xs"
+                                className="flex gap-3 w-full justify-start text-sm font-normal px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 onClick={onCompleteView}
                             >
-                                Complete View
+                                <FileText className="h-4 w-4 shrink-0" />Complete View
                             </Button>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="w-full justify-start text-xs"
+                                className="flex gap-3 w-full justify-start text-sm font-normal px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 onClick={onEditorView}
                             >
-                                Editor View
+                                <Pencil className="h-4 w-4 shrink-0" />Editor View
                             </Button>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="w-full justify-start text-xs text-muted-foreground"
+                                className="flex gap-3 w-full justify-start text-sm font-normal px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                 disabled
                             >
-                                Student Progress
+                                <ChartBar className="h-4 w-4 shrink-0" />Student Progress
                             </Button>
                         </div>
                     </div>
@@ -463,12 +549,12 @@ function TocColumn({
                     <Separator />
                     <div>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="w-full justify-start text-xs gap-2"
+                            className="flex gap-3 w-full justify-start text-sm font-normal px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             onClick={() => window.print()}
                         >
-                            <Printer className="h-3.5 w-3.5" />Print
+                            <Printer className="h-4 w-4 shrink-0" />Print
                         </Button>
                     </div>
                 </>

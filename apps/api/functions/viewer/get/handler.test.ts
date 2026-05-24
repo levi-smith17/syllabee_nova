@@ -57,7 +57,7 @@ function setupMocks({
         // sectionGsi
         .mockResolvedValueOnce({ Items: hasSection ? [sectionItem] : [] })
         // parallel: courseDetail + syllabusRes + brandingItem
-        .mockResolvedValueOnce({ Item: { name: 'Introduction to Programming' } })
+        .mockResolvedValueOnce({ Item: { title: 'Introduction to Programming' } })
         .mockResolvedValueOnce({
             Items: hasSyllabus ? [
                 syllabusMetadata,

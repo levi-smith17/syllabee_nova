@@ -23,6 +23,7 @@ import {
   Redo,
   Highlighter,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface InlineProps {
   content: string;
@@ -33,7 +34,7 @@ interface InlineProps {
   className?: string;
 }
 
-export function InlineRichTextEditor({ content, onChange, placeholder, rows = 2, disabled = false, className }: InlineProps) {
+export function InlineTextEditor({ content, onChange, placeholder, rows = 2, disabled = false, className }: InlineProps) {
   const minHeight = `${rows * 24}px`;
 
   const editor = useEditor({
@@ -111,13 +112,10 @@ export function InlineRichTextEditor({ content, onChange, placeholder, rows = 2,
           <UnderlineIcon className="h-3 w-3" />
         </ToolbarButton>
       </div>
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="bg-input" />
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 interface Props {
   content: string;
@@ -126,7 +124,7 @@ interface Props {
   className?: string;
 }
 
-export function RichTextEditor({ content, onChange, placeholder, className }: Props) {
+export function TextEditor({ content, onChange, placeholder, className }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -274,7 +272,7 @@ export function RichTextEditor({ content, onChange, placeholder, className }: Pr
       </div>
 
       {/* Editor */}
-      <EditorContent editor={editor} />
+      <EditorContent editor={editor} className="bg-input" />
     </div>
   );
 }

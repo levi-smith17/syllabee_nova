@@ -1,5 +1,25 @@
 import React from 'react'
-import { Binoculars, Pencil, Eye, EyeOff, Loader2, GripVertical, Trash2, Heading2, Heading3, Heading4, Heading5, Heading6, Plus, Copy, MoreHorizontal, ChartBar, Check, ExternalLink } from 'lucide-react'
+import {
+    Binoculars,
+    Pencil,
+    Eye,
+    EyeOff,
+    Loader2,
+    GripVertical,
+    Trash2,
+    Heading2,
+    Heading3,
+    Heading4,
+    Heading5,
+    Heading6,
+    Plus,
+    Copy,
+    MoreHorizontal,
+    ChartBar,
+    Check,
+    ExternalLink,
+    NotebookTabs
+} from 'lucide-react'
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -11,7 +31,6 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
@@ -84,27 +103,27 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
             style={style}
             className={cn(
                 'flex items-stretch border transition-colors',
-                selected ? 'border-primary bg-muted' : 'border-border',
+                selected ? 'border-primary bg-muted-selected' : 'border-border',
                 isDragging && 'opacity-50 z-10',
             )}
         >
             {/* Left action bar (primary) — grip, heading icon, more menu */}
             <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
                 <button
-                    className="p-1.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
+                    className="p-1.5 shrink-0 rounded-sm touch-none cursor-grab bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                     {...attributes}
                     {...listeners}
                     title="Drag to reorder; move left/right to change heading level"
                 >
                     <GripVertical className="h-4 w-4" />
                 </button>
-                <HeadingIcon className="h-4 w-4 text-black my-1.5 shrink-0" />
+                <HeadingIcon className="h-4 w-4 text-primary-foreground my-1.5 shrink-0" />
                 <DropdownMenu>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                                 <Button type="button" variant="ghost"
-                                        className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                        className="h-7 w-7 p-1.5 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -114,11 +133,12 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                         </TooltipContent>
                     </Tooltip>
                     <DropdownMenuContent align="start" side="right" onCloseAutoFocus={(e) => e.preventDefault()}>
-                        <DropdownMenuItem onClick={onEdit}>
+                        <DropdownMenuItem onClick={onEdit} className="focus:bg-muted-hover">
                             <Pencil className="h-4 w-4 mr-2" />Edit
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-popover-border" />
                         <DropdownMenuItem
-                            className="text-destructive focus:text-destructive/75 focus:bg-destructive/10"
+                            className="bg-destructive text-destructive-foreground focus:bg-destructive/70 transition-colors"
                             onClick={onDelete}
                         >
                             <Trash2 className="h-4 w-4 mr-2" />Delete
@@ -133,7 +153,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                     <TooltipTrigger asChild>
                         <Button
                             type="button" variant="ghost"
-                            className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                            className="h-7 w-7 p-1.5 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                             onClick={onToggleVisible}
                         >
                             {segment.isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -152,7 +172,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         type="button" variant="ghost"
-                                        className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                                        className="h-7 w-7 p-1.5 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                                     >
                                         <Binoculars className="h-4 w-4" />
                                     </Button>
@@ -170,45 +190,45 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                     </DropdownMenuLabel>
                                     {syllabus?.interactiveView ? (
                                         <>
-                                            <DropdownMenuItem asChild>
+                                            <DropdownMenuItem asChild className="focus:bg-muted-hover">
                                                 <a
                                                     href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}?mode=complete`}
                                                     target="_self"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
                                                 >
-                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
                                                     Complete Syllabus
                                                 </a>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
+                                            <DropdownMenuItem asChild className="focus:bg-muted-hover">
                                                 <a
                                                     href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
                                                     target="_self"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 cursor-pointer"
                                                 >
-                                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
                                                     Interactive Syllabus
                                                 </a>
                                             </DropdownMenuItem>
                                         </>
                                     ) : (
-                                        <DropdownMenuItem asChild>
+                                        <DropdownMenuItem asChild className="focus:bg-muted-hover">
                                             <a
                                                 href={`/s/${sec.courseCode}/${sec.sectionCode}/${sec.termCode}`}
                                                 target="_self"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 cursor-pointer"
                                             >
-                                                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <ExternalLink className="h-4 w-4 text-muted-foreground" />
                                                 Traditional Syllabus
                                             </a>
                                         </DropdownMenuItem>
                                     )}
                                 </DropdownMenuGroup>
                             ))}
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="bg-popover-border" />
                             <DropdownMenuGroup>
                                 <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
                                     Copy URL
@@ -217,13 +237,14 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                                     <DropdownMenuItem
                                         key={sec.id}
                                         onClick={() => copyUrl(sec)}
-                                        className="flex items-center gap-2 cursor-pointer"
+                                        onSelect={(e) => e.preventDefault()}
+                                        className="flex items-center gap-2 cursor-pointer focus:bg-muted-hover"
                                     >
                                         {copiedSectionId === sec.id
-                                            ? <Check className="h-3.5 w-3.5 text-green-500" />
-                                            : <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                                            ? <Check className="h-4 w-4 text-green-500" />
+                                            : <Copy className="h-4 w-4 text-muted-foreground" />
                                         }
-                                        <span className="text-[11px]">{sectionLabel(sec)}</span>
+                                        <span className="text-sm">{sectionLabel(sec)}</span>
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuGroup>
@@ -236,7 +257,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
                         <TooltipTrigger asChild>
                             <Button
                                 type="button" variant="ghost"
-                                className="h-7 w-7 p-1.5 text-sidebar hover:bg-sidebar/20 hover:text-black rounded-sm transition-colors"
+                                className="h-7 w-7 p-1.5 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                                 onClick={onOpenStudentProgress}
                             >
                                 <ChartBar className="h-4 w-4" />
@@ -251,7 +272,7 @@ function SortableSegmentRow({ segment, selected, onSelect, onEdit, onDelete, onT
 
             {/* Clickable selection area */}
             <div
-                className="flex-1 min-w-0 px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                className="flex-1 min-w-0 px-3 py-2.5 cursor-pointer hover:bg-muted-hover transition-colors"
                 onClick={onSelect}
             >
                 <p className="text-xs font-medium truncate">{segment.name}</p>
@@ -310,34 +331,38 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
 
 
     return (
-        <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="space-y-1.5">
-                <Label className="text-xs">Name</Label>
-                <Input
-                    value={form.name}
-                    disabled={locked}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="rounded-none h-8 text-xs"
-                    required
-                    placeholder="Introduction"
-                />
-            </div>
+        <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="flex-1 overflow-y-auto p-4 space-y-2">
 
-            <div className="space-y-1.5">
-                <Label className="text-xs">Description</Label>
-                <Textarea
-                    value={form.description}
-                    disabled={locked}
-                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    rows={3}
-                    className="rounded-none text-xs resize-none"
-                    placeholder="Contains ..."
-                />
-            </div>
+            <Input
+                label="Name"
+                description="The name of this segment (visible to students)."
+                value={form.name}
+                disabled={locked}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                className="rounded-none h-8 text-xs"
+                required
+                placeholder="Introduction"
+            />
+
+            <Textarea
+                label="Description"
+                isOptional={true}
+                description="A description for this segment (not visible to students)."
+                value={form.description}
+                disabled={locked}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="rounded-none text-xs resize-none"
+                placeholder="Contains ..."
+            />
 
             {/* Print Heading Level — choice cards */}
-            <div className="space-y-1.5">
-                <Label className="text-xs">Print Heading Level</Label>
+            <div className="space-y-2 p-3 border border-border">
+                <p className="text-xs font-medium mb-0.5">Print Heading Level</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                    Defines how syllabus content is structured when printed, controlling the hierarchy and
+                    indentation of headings to improve readability and organization.
+                </p>
                 <div className="flex flex-col gap-1.5">
                     {SEG_HEADING_OPTS.map(h => {
                         const checked = form.printHeading === h
@@ -347,7 +372,7 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
                                 className={cn(
                                     'flex items-start gap-2.5 border p-3 cursor-pointer transition-colors',
                                     locked && 'pointer-events-none opacity-60',
-                                    checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+                                    checked ? 'border-primary bg-muted-selected' : 'border-border hover:bg-muted-hover',
                                 )}
                             >
                                 <input
@@ -378,7 +403,7 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
             <div className={cn(
                 'flex items-start gap-3 border p-3 transition-colors cursor-pointer',
                 locked && 'pointer-events-none opacity-60',
-                form.isVisible ? 'border-primary bg-primary/5' : 'border-border',
+                form.isVisible ? 'border-primary bg-muted-selected' : 'border-border hover:bg-muted-hover',
             )} onClick={() => !locked && setForm(f => ({ ...f, isVisible: !f.isVisible }))}>
                 <div className="mt-0.5 shrink-0">
                     <div className={cn(
@@ -402,7 +427,7 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
             <div className={cn(
                 'flex items-start gap-3 border p-3 transition-colors cursor-pointer',
                 locked && 'pointer-events-none opacity-60',
-                form.printingOptional ? 'border-primary bg-primary/5' : 'border-border',
+                form.printingOptional ? 'border-primary bg-muted-selected' : 'border-border hover:bg-muted-hover',
             )} onClick={() => !locked && setForm(f => ({ ...f, printingOptional: !f.printingOptional }))}>
                 <div className="mt-0.5 shrink-0">
                     <div className={cn(
@@ -423,8 +448,8 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
             </div>
 
             {/* Sections picker */}
-            <div className="space-y-1.5">
-                <Label className="text-xs">Sections <span className="text-muted-foreground">(optional)</span></Label>
+            <div className="space-y-2 p-3 border border-border focus-within:bg-input-focus focus-within:ring-1 focus-within:ring-ring">
+                <p className="text-xs">Sections <span className="text-muted-foreground">(optional)</span></p>
                 <p className="text-[11px] text-muted-foreground">
                     If no sections are selected, this segment is shared across all sections.
                 </p>
@@ -437,8 +462,8 @@ function SegmentForm({ mode, segment, locked, availableSections, onSave, isSavin
             </div>
 
             {!locked && (
-                <div className="space-y-2 pt-2">
-                    <Button type="submit" disabled={isSaving} className="w-full flex-1 rounded-none h-9 bg-primary text-black hover:bg-primary/80">
+                <div className="pt-2">
+                    <Button type="submit" disabled={isSaving} className="w-full flex-1 rounded-none h-9 bg-primary text-primary-foreground hover:bg-primary/80">
                         {isSaving
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
                             : mode === 'add' ? 'Create Segment' : 'Save Segment'}
@@ -577,9 +602,9 @@ export function SegmentColumn({
     const deleteConfirmSegment = segments.find(s => s.id === deleteConfirmId)
 
     return (
-        <div className="w-full md:w-64 xl:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
+        <div className="column bg-column-center w-full md:w-64 xl:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
 
-            {col2Mode === 'segmentList' && (
+            {col2Mode === 'listSegments' && (
                 <>
                     <ColHeader title={syllabus?.title ?? '…'} subtitle={`${segments.length} segment${segments.length !== 1 ? 's' : ''}`} onBack={mobileBack}>
                         {!locked && (
@@ -590,11 +615,11 @@ export function SegmentColumn({
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setCol2Mode('segmentAdd')}>
-                                        <Plus className="h-4 w-4 mr-2" />Add Segment
+                                    <DropdownMenuItem onClick={() => setCol2Mode('addSegment')} className="focus:bg-muted-hover">
+                                        <NotebookTabs className="h-4 w-4 mr-2" />Create Segment
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setLibraryOpen(true)}>
-                                        <Copy className="h-4 w-4 mr-2" />Copy Content
+                                    <DropdownMenuItem onClick={() => setLibraryOpen(true)} className="focus:bg-muted-hover">
+                                        <Copy className="h-4 w-4 mr-2" />Copy Segment(s)
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -620,10 +645,10 @@ export function SegmentColumn({
 
                         {detailLoading ? (
                             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading…
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading segments…
                             </div>
                         ) : sortedSegments.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-8 text-center">No segments yet.</p>
+                            <p className="flex items-center justify-center py-12 text-muted-foreground text-sm">No segments yet.</p>
                         ) : (
                             <DndContext
                                 sensors={sensors}
@@ -644,7 +669,7 @@ export function SegmentColumn({
                                                 allSections={availableSections}
                                                 syllabus={syllabus}
                                                 onSelect={() => onSelectSegment(seg.id)}
-                                                onEdit={() => { setEditingSegmentId(seg.id); setCol2Mode('segmentEdit') }}
+                                                onEdit={() => { setEditingSegmentId(seg.id); setCol2Mode('editSegment') }}
                                                 onDelete={() => setDeleteConfirmId(seg.id)}
                                                 onToggleVisible={() => {
                                                     if (!locked) onUpdateSegment(seg.id, { isVisible: !seg.isVisible })
@@ -660,9 +685,9 @@ export function SegmentColumn({
                 </>
             )}
 
-            {col2Mode === 'segmentAdd' && (
+            {col2Mode === 'addSegment' && (
                 <>
-                    <ColHeader title="Add Segment" subtitle="" onBack={() => setCol2Mode('segmentList')} />
+                    <ColHeader title="Create Segment" subtitle="" icon={<NotebookTabs className="h-5 w-5" />} onBack={() => setCol2Mode('listSegments')} />
                     <SegmentForm
                         mode="add"
                         availableSections={availableSections}
@@ -672,9 +697,9 @@ export function SegmentColumn({
                 </>
             )}
 
-            {col2Mode === 'segmentEdit' && editingSegmentId && (
+            {col2Mode === 'editSegment' && editingSegmentId && (
                 <>
-                    <ColHeader title="Edit Segment" subtitle="" onBack={() => setCol2Mode('segmentList')}>
+                    <ColHeader title="Edit Segment" subtitle="" icon={<NotebookTabs className="h-5 w-5" />} onBack={() => setCol2Mode('listSegments')}>
                         {!locked && <DeleteButton onClick={() => setDeleteConfirmId(editingSegmentId)} />}
                     </ColHeader>
                     <SegmentForm

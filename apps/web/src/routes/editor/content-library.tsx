@@ -238,7 +238,7 @@ export function ContentLibraryDialog({
                                                                     'h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center',
                                                                     checked ? 'border-primary bg-primary' : 'border-muted-foreground/40',
                                                                 )}>
-                                                                    {checked && <span className="text-black text-[10px] font-bold leading-none">✓</span>}
+                                                                    {checked && <span className="text-primary-foreground text-[10px] font-bold leading-none">✓</span>}
                                                                 </div>
                                                                 <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                                                 <div className="flex-1 min-w-0">
@@ -582,7 +582,7 @@ export function ContentLibraryDialog({
                                 <Button
                                     size="sm"
                                     disabled={isCopying}
-                                    className="rounded-none h-8 text-xs bg-primary text-black hover:bg-primary/80"
+                                    className="rounded-none h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/80"
                                     onClick={handleConfirmBlockCopy}
                                 >
                                     {isCopying
@@ -631,7 +631,7 @@ export function ContentLibraryDialog({
                                 <Button
                                     size="sm"
                                     disabled={isCopying}
-                                    className="rounded-none h-8 text-xs bg-primary text-black hover:bg-primary/80"
+                                    className="rounded-none h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/80"
                                     onClick={handleConfirmCopy}
                                 >
                                     {isCopying

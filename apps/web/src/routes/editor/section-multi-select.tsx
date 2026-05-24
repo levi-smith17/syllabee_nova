@@ -62,30 +62,30 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
                 disabled={disabled}
                 onClick={() => !disabled && setOpen(o => !o)}
                 className={cn(
-                    'h-8 w-full border border-input bg-transparent px-3 text-xs flex items-center justify-between gap-2 rounded-none',
-                    'hover:bg-accent transition-colors disabled:opacity-50 disabled:pointer-events-none',
+                    'h-9 w-full border border-input bg-input px-3 py-1 text-xs flex items-center justify-between gap-2 rounded-none',
+                    ' transition-colors disabled:opacity-50 disabled:pointer-events-none',
                     open && 'border-ring',
                 )}
             >
                 <span className="truncate text-muted-foreground">{triggerLabel}</span>
-                <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
+                <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
             </button>
 
             {open && (
                 <div
                     ref={dropdownRef}
-                    className="absolute z-50 top-full left-0 right-0 border border-input bg-popover shadow-md mt-px max-h-48 overflow-y-auto"
+                    className="absolute z-50 bottom-full left-0 right-0 border border-popover-border bg-popover text-popover-foreground shadow-popover-shadow mt-px max-h-48 overflow-y-auto"
                 >
                     <input
                         autoFocus
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search sections…"
-                        className="w-full h-7 px-3 text-xs border-b border-input bg-transparent outline-none placeholder:text-muted-foreground"
+                        className="w-full h-7 px-3 text-xs border-b border-popover-border bg-input outline-none placeholder:text-popover-foreground"
                     />
                     {filtered.length === 0 ? (
-                        <p className="px-3 py-2 text-xs text-muted-foreground italic">
-                            {unselectedSections.length === 0 ? 'All sections selected.' : 'No sections match.'}
+                        <p className="px-3 py-2 text-xs text-popover-foreground italic">
+                            {unselectedSections.length === 0 ? 'No sections remaining.' : 'No sections match.'}
                         </p>
                     ) : (
                         filtered.map(sec => (
@@ -93,9 +93,8 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
                                 key={sec.id}
                                 type="button"
                                 onClick={() => { select(sec.id) }}
-                                className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                                className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted-hover transition-colors"
                             >
-                                <div className="h-4 w-4 shrink-0 rounded-sm border border-primary" />
                                 {sectionLabel(sec)}
                             </button>
                         ))
@@ -106,16 +105,16 @@ export function SectionMultiSelect({ sections, value, onChange, disabled }: {
             {selectedSections.map(sec => (
                 <div
                     key={sec.id}
-                    className="flex items-center justify-between border border-primary bg-primary/5 px-3 py-1.5 mt-1"
+                    className="flex items-center justify-between border border-primary bg-muted-selected px-3 py-1.5 mt-1"
                 >
                     <span className="text-xs">{sectionLabel(sec)}</span>
                     <button
                         type="button"
                         disabled={disabled}
                         onClick={() => deselect(sec.id)}
-                        className="text-muted-foreground hover:text-foreground ml-2 shrink-0 disabled:opacity-40"
+                        className="text-popover-foreground hover:text-destructive ml-2 shrink-0 disabled:opacity-40"
                     >
-                        <X className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             ))}

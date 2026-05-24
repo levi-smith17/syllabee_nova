@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+    Boxes,
     Loader2,
     Trash2,
     Plus,
@@ -29,7 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RichTextEditor, InlineRichTextEditor } from '@/components/editor/rich-text-editor'
+import { TextEditor, InlineTextEditor } from '../../components/editor/text-editor'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { BlockRenderer } from "@/routes/viewer/block-renderer";
 
 type SegmentWithBlocks = SyllabusSegment & { blocks: SyllabusBlock[] }
 
@@ -93,21 +95,21 @@ function SortableBlockRow({ block, selected, onEdit, onDelete, draggingHeading }
             {/* Left action bar */}
             <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
                 <button
-                    className="p-1.5 cursor-grab text-black hover:bg-black/10 rounded-sm touch-none shrink-0"
+                    className="p-1.5 rounded-sm touch-none shrink-0 cursor-grab bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                     {...attributes}
                     {...listeners}
                     title="Drag to reorder; move left/right to change heading level"
                 >
                     <GripVertical className="h-4 w-4" />
                 </button>
-                <Icon className="h-4 w-4 text-black my-0.5 shrink-0" />
-                <HeadingIcon className="h-4 w-4 text-black my-0.5 shrink-0" />
+                <Icon className="h-4 w-4 text-primary-foreground my-1.5 shrink-0" />
+                <HeadingIcon className="h-4 w-4 text-primary-foreground my-1.5 shrink-0" />
                 <DropdownMenu>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                                 <Button type="button" variant="ghost"
-                                    className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                    className="h-7 w-7 p-1.5 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -148,7 +150,7 @@ function BlockContentPreview({ type, content }: {
     switch (type) {
         case 'content_block':
             return (content.html as string)
-                ? <div className="prose prose-sm max-w-none text-xs [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: content.html as string }} />
+                ? <div className="prose prose-sm  prose-theme dark:prose-invert max-w-none text-xs [&_*]:text-xs" dangerouslySetInnerHTML={{ __html: content.html as string }} />
                 : <p className="text-xs text-muted-foreground italic">No content.</p>
 
         case 'details_block': {
@@ -377,7 +379,7 @@ function ListLevelEditor({ data, depth, locked, onChange, onRemove }: {
             {data.items.map((item, idx) => (
                 <div key={item.id} className="space-y-1">
                     <div className="flex items-start gap-1">
-                        <InlineRichTextEditor
+                        <InlineTextEditor
                             content={item.text}
                             onChange={html => onChange({ ...data, items: data.items.map((it, i) => i === idx ? { ...it, text: html } : it) })}
                             rows={1}
@@ -456,7 +458,7 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
                     <button
                         key={type}
                         onClick={() => onPick(type)}
-                        className="flex flex-col items-center gap-2 border p-4 hover:bg-muted/50 hover:border-primary/50 transition-colors text-left"
+                        className="flex flex-col items-center gap-2 border p-4 cursor-pointer text-left hover:bg-muted-hover transition-colors"
                     >
                         <div className="flex items-center gap-2 w-full">
                             <Icon className="h-6 w-6 text-primary shrink-0" />
@@ -468,7 +470,7 @@ function BlockPicker({ onPick, onCopyFromLibrary }: {
             </div>
             <button
                 onClick={onCopyFromLibrary}
-                className="w-full flex items-center justify-center gap-2 border border-border px-4 py-3 text-xs font-medium hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 border border-border px-4 py-3 text-xs font-medium hover:bg-muted-hover transition-colors"
             >
                 <Copy className="h-6 w-6 text-primary shrink-0" />
                 <span className="text-xs font-medium leading-tight truncate">Copy from Library</span>
@@ -490,7 +492,7 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
     onDelete?: () => void
     isSaving: boolean
 }) {
-    const { label, Icon } = BLOCK_META[type] ?? { label: type, Icon: FileText }
+    const { label } = BLOCK_META[type] ?? { label: type }
     const [name, setName] = React.useState(block?.name ?? label)
     const [printHeading, setPrintHeading] = React.useState(block?.printHeading ?? 3)
     const [printGroup, setPrintGroup] = React.useState(block?.printGroup ?? '')
@@ -507,40 +509,45 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
     return (
         <form
             onSubmit={e => { e.preventDefault(); onSave({ name, printHeading, ...(printGroup ? { printGroup } : {}), content }) }}
-            className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl"
+            className="flex-1 overflow-y-auto p-4 space-y-2"
         >
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Icon className="h-4 w-4" /><span>{label}</span>
-            </div>
-            <div className="space-y-1.5">
-                <Label className="text-xs">Block Name</Label>
-                <Input placeholder={name} value={mode !== 'add' ? name : undefined} disabled={locked} onChange={e => setName(e.target.value)} className="rounded-none h-8 text-xs" required />
-            </div>
 
-            <div className="space-y-1.5">
-                <Label className="text-xs">Print Group</Label>
-                <Input
-                    placeholder="e.g. Intro"
-                    value={printGroup}
-                    disabled={locked}
-                    onChange={e => setPrintGroup(e.target.value)}
-                    className="rounded-none h-8 text-xs"
-                    list="print-group-datalist"
-                    autoComplete="off"
-                />
-                {existingPrintGroups.length > 0 && (
-                    <datalist id="print-group-datalist">
-                        {existingPrintGroups.map(pg => <option key={pg} value={pg} />)}
-                    </datalist>
-                )}
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                    The print group that this block is assigned to. Print groups are used to merge content together during printing (it combines separate blocks into a single block during printing).
-                </p>
-            </div>
+            <Input
+                label="Name"
+                description="The name of this block (visible to students)."
+                placeholder={name} disabled={locked} required
+                value={mode !== 'add' ? name : undefined}
+                onChange={e => setName(e.target.value)}
+                className="rounded-none h-8 text-xs"
+            />
+
+            <Input
+                label="Print Group"
+                isOptional={true}
+                description="The print group that this block is assigned to. Print groups are used to merge content together
+                    during printing (it combines separate blocks into a single block during printing). Once a value is
+                    saved to a block that same value can be chosen from a drop-down menu on subsequent blocks."
+                placeholder="e.g. Intro"
+                value={printGroup}
+                disabled={locked}
+                onChange={e => setPrintGroup(e.target.value)}
+                className="rounded-none h-8 text-xs"
+                list="print-group-datalist"
+                autoComplete="off"
+            />
+            {existingPrintGroups.length > 0 && (
+                <datalist id="print-group-datalist">
+                    {existingPrintGroups.map(pg => <option key={pg} value={pg} />)}
+                </datalist>
+            )}
 
             {/* Print Heading Level — choice cards */}
-            <div className="space-y-1.5">
-                <Label className="text-xs">Print Heading Level</Label>
+            <div className="space-y-2 p-3 border border-border">
+                <p className="text-xs font-medium mb-0.5">Print Heading Level</p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                    Defines how syllabus content is structured when printed, controlling the hierarchy and
+                    indentation of headings to improve readability and organization.
+                </p>
                 <div className="flex flex-col gap-1.5">
                     {BLK_HEADING_OPTS.map(h => {
                         const checked = printHeading === h
@@ -550,7 +557,7 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
                                 className={cn(
                                     'flex items-start gap-2.5 border p-3 cursor-pointer transition-colors',
                                     locked && 'pointer-events-none opacity-60',
-                                    checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+                                    checked ? 'border-primary bg-muted-selected' : 'border-border hover:bg-muted-hover',
                                 )}
                             >
                                 <input
@@ -588,10 +595,10 @@ function BlockForm({ mode, block, type, gradingScales, locked, existingPrintGrou
             />
             {!locked && (
                 <div className="space-y-2 pt-2">
-                    <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
+                    <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-primary-foreground hover:bg-primary/80">
                         {isSaving
                             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{mode === 'add' ? 'Creating…' : 'Saving…'}</>
-                            : mode === 'add' ? 'Create Block' : 'Save Block'}
+                            : mode === 'add' ? `Create ${label} Block` : 'Save Block'}
                     </Button>
                 </div>
             )}
@@ -611,59 +618,155 @@ function BlockContentEditor({ type, content, locked, gradingScales, onChange }: 
     switch (type) {
         case 'content_block':
             return (
-                <div className="space-y-1.5">
-                    <Label>Content</Label>
-                    <RichTextEditor
+                <div className="space-y-2 p-3 border border-border">
+                    <p className="text-xs font-medium mb-0.5">Content</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                        The content associated with this block.
+                    </p>
+                    <TextEditor
                         content={(content.html as string) ?? ''}
                         onChange={(html: string) => { if (!locked) onChange({ ...content, html }) }}
-                        className="rounded-none"
+                        className="rounded-none focus-within:bg-input-focus focus-within:ring-1 focus-within:ring-primary"
                     />
                 </div>
             )
 
         case 'details_block': {
-            type Section = { id: string; html: string }
-            const sections: Section[] = (content.sections as Section[]) ?? []
+            type Collapsible = {
+                id: string
+                summary: string
+                html: string
+            }
+            const collapsibles: Collapsible[] =
+                (content.collapsibles as Collapsible[])?.length
+                    ? (content.collapsibles as Collapsible[])
+                    : [{ id: uid(), summary: '', html: '' }]
+
+            const example: SyllabusBlock = {
+                id: "example-id",
+                syllabusId: "example-syllabus",
+                segmentId: "example-segment",
+                type: "details_block",
+                name: "Example Details Block",
+                isVisible: true,
+                sortOrder: 1,
+                printHeading: 1,
+                published: true,
+                content: {
+                    summary: "Click to see course guidelines",
+                    html: "<details><summary>Late Work Policy</summary><p>Assignments submitted up to 24 hours late " +
+                        "will receive a 10% deduction.Work submitted more than 48 hours late may not be accepted " +
+                        "unless prior arrangements have been made.</p></details><details><summary>Required " +
+                        "Textbooks</summary><p>Students are expected to obtain the required course textbook and any " +
+                        "supplemental readings listed in the syllabus before the second week of class.</p>" +
+                        "</details><details><summary>Discussion Participation Expectations</summary><p>Students " +
+                        "should contribute thoughtfully to weekly discussions and respond respectfully to " +
+                        "classmates. Participation is graded based on both quality and consistency of engagement." +
+                        "</p></details>"
+                }
+            };
             return (
                 <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <Label>Summary</Label>
-                        <Input value={(content.summary as string) ?? ''} disabled={locked} className="rounded-none"
-                            onChange={e => onChange({ ...content, summary: e.target.value })} />
+                    <div
+                        key={example.id}
+                        id={example.id}
+                        className="bg-card text-card-foreground border-l-solid border-l-sidebar-foreground shadow-2xl"
+                        style={{ borderLeftWidth: `${(3 * 14) - 14}px` }}
+                    >
+                        <BlockRenderer block={example} isInteractive={false} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Content</Label>
-                        {sections.map((sec, idx) => (
-                            <div key={sec.id} className="space-y-1">
-                                {sections.length > 1 && (
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">Section {idx + 1}</span>
-                                        {!locked && (
-                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/75 hover:bg-destructive/10"
-                                                onClick={() => onChange({ ...content, sections: sections.filter((_, i) => i !== idx) })}>
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        )}
+
+                    <div className="space-y-3 p-3 border border-border">
+                        {collapsibles.map((collapsible, idx) => (
+                            <fieldset key={collapsible.id} className="space-y-2 p-3 border border-sidebar-foreground">
+                                <legend className="text-xs font-medium ml-2 -mb-1">Collapsible {idx + 1}</legend>
+
+                                <Input
+                                    label="Summary"
+                                    description="The heading or clickable text that users click on to expand the hidden details below."
+                                    value={collapsible.summary}
+                                    disabled={locked}
+                                    onChange={e => {
+                                        onChange({
+                                            ...content,
+                                            collapsibles: collapsibles.map((c, i) =>
+                                                i === idx
+                                                    ? { ...c, summary: e.target.value }
+                                                    : c
+                                            ),
+                                        })
+                                    }}
+                                />
+
+                                <div className="space-y-2 p-3 border border-border">
+                                    <div>
+                                        <p className="text-xs font-medium mb-0.5">
+                                            Detail
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground leading-snug">
+                                            The detailed information or content revealed when this section is expanded.
+                                        </p>
+                                    </div>
+                                    <TextEditor
+                                        content={collapsible.html}
+                                        onChange={(html: string) => {
+                                            if (locked) return
+                                            onChange({
+                                                ...content,
+                                                collapsibles: collapsibles.map((c, i) =>
+                                                    i === idx
+                                                        ? { ...c, html }
+                                                        : c
+                                                ),
+                                            })
+                                        }}
+                                        className="rounded-none focus-within:bg-input-focus focus-within:ring-1 focus-within:ring-primary"
+                                    />
+                                </div>
+
+                                {!locked && collapsibles.length > 1 && (
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="rounded-none bg-destructive text-destructive-foreground hover:bg-destructive/70 transition-colors"
+                                            onClick={() => {
+                                                onChange({
+                                                    ...content,
+                                                    collapsibles: collapsibles.filter((_, i) => i !== idx),
+                                                })
+                                            }}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-1" />
+                                            Remove Collapsible
+                                        </Button>
                                     </div>
                                 )}
-                                <RichTextEditor
-                                    key={sec.id}
-                                    content={sec.html}
-                                    onChange={(html: string) => {
-                                        if (!locked) onChange({ ...content, sections: sections.map((s, i) => i === idx ? { ...s, html } : s) })
-                                    }}
-                                    className="rounded-none"
-                                />
-                            </div>
+                            </fieldset>
                         ))}
-                        {sections.length === 0 && (
-                            <p className="text-xs text-muted-foreground italic">No content areas. Add one below.</p>
-                        )}
+
                         {!locked && (
-                            <Button type="button" variant="outline"
-                                    className="flex items-center gap-1 rounded-none text-xs text-muted-foreground transition-colors mt-1 w-full"
-                                    onClick={() => onChange({ ...content, sections: [...sections, { id: uid(), html: '' }] })}>
-                                <Plus className="h-4 w-4 mr-1" />Add Content Area
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="flex items-center gap-1 rounded-none text-xs mt-1 w-full bg-muted hover:bg-muted-hover transition-colors"
+                                onClick={() => {
+                                    onChange({
+                                        ...content,
+                                        collapsibles: [
+                                            ...collapsibles,
+                                            {
+                                                id: uid(),
+                                                summary: '',
+                                                html: '',
+                                            },
+                                        ],
+                                    })
+                                }}
+                            >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add Detail
                             </Button>
                         )}
                     </div>
@@ -1011,8 +1114,8 @@ export function BlockColumn({
     setCol3Mode: (m: Col3Mode) => void
     selectedBlockId: string | null
     setSelectedBlockId: (id: string | null) => void
-    newBlockType: BlockType | null
-    setNewBlockType: (t: BlockType | null) => void
+    newBlockType: BlockType
+    setNewBlockType: (t: BlockType) => void
     gradingScales: GradingScale[]
     onAddBlock: (segId: string, body: Record<string, unknown>) => void
     onUpdateBlock: (segId: string, blockId: string, body: Record<string, unknown>) => void
@@ -1101,14 +1204,16 @@ export function BlockColumn({
         onReorderBlocks(selectedSegment.id, arrayMove(sortedBlocks, oldIdx, newIdx).map(b => b.id))
     }
 
-    return (
-        <div className="w-full md:flex-1 flex flex-col overflow-hidden min-w-0">
+    const { label, Icon } = BLOCK_META[newBlockType] ?? { label: newBlockType, Icon: FileText }
 
-            {col3Mode === 'blocks' && (
+    return (
+        <div className="column bg-column-right w-full md:flex-1 flex flex-col overflow-hidden min-w-0">
+
+            {col3Mode === 'listBlocks' && (
                 <>
                     <ColHeader title={selectedSegment.name} subtitle={`${selectedSegment.blocks.length} block${selectedSegment.blocks.length !== 1 ? 's' : ''}`} onBack={mobileBack}>
                         {!locked && (
-                            <AddButton onClick={() => setCol3Mode('picker')} />
+                            <AddButton onClick={() => setCol3Mode('addBlockPicker')} />
                         )}
                     </ColHeader>
                     <div ref={listRef} className="relative flex-1 overflow-y-auto p-3">
@@ -1152,9 +1257,9 @@ export function BlockColumn({
                 </>
             )}
 
-            {col3Mode === 'picker' && (
+            {col3Mode === 'addBlockPicker' && (
                 <>
-                    <ColHeader title="Choose Block Type" subtitle="" onBack={() => setCol3Mode('blocks')} />
+                    <ColHeader title="Create Block" subtitle="" icon={<Boxes className="h-5 w-5" />} onBack={() => setCol3Mode('listBlocks')} />
                     <BlockPicker
                         onPick={type => { setNewBlockType(type); setCol3Mode('addBlock') }}
                         onCopyFromLibrary={() => setLibraryOpen(true)}
@@ -1165,9 +1270,10 @@ export function BlockColumn({
             {col3Mode === 'addBlock' && newBlockType && (
                 <>
                     <ColHeader
-                        title={`Add ${BLOCK_META[newBlockType]?.label ?? ''} Block`}
+                        title={`Create ${label ?? ''} Block`}
                         subtitle=""
-                        onBack={() => setCol3Mode('picker')}
+                        icon={<Icon className="h-5 w-5" />}
+                        onBack={() => setCol3Mode('addBlockPicker')}
                     />
                     <BlockForm
                         mode="add"
@@ -1185,7 +1291,7 @@ export function BlockColumn({
                     <ColHeader
                         title="Edit Block"
                         subtitle=""
-                        onBack={() => { setSelectedBlockId(null); setCol3Mode('blocks') }}
+                        onBack={() => { setSelectedBlockId(null); setCol3Mode('listBlocks') }}
                     >
                         {selectedBlock && !locked && (
                             <DeleteButton onClick={() => setDeleteConfirmId(selectedBlock.id)} />
@@ -1215,7 +1321,7 @@ export function BlockColumn({
                     <ColHeader
                         title="Student Progress"
                         subtitle=""
-                        onBack={() => setCol3Mode('blocks')}
+                        onBack={() => setCol3Mode('listBlocks')}
                         icon={<ChartBar className="h-4 w-4" />}
                     />
                     <div className="flex-1 flex items-center justify-center p-8">
@@ -1240,7 +1346,7 @@ export function BlockColumn({
                                 onDeleteBlock(selectedSegment.id, deleteConfirmId!)
                                 if (selectedBlockId === deleteConfirmId) {
                                     setSelectedBlockId(null)
-                                    setCol3Mode('blocks')
+                                    setCol3Mode('listBlocks')
                                 }
                                 setDeleteConfirmId(null)
                             }}

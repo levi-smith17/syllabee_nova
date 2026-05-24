@@ -27,15 +27,15 @@ export default function EditorPage() {
     const isMobile = useIsMobile()
 
     // ── Column modes ──────────────────────────────────────────────────────────
-    const [col1Mode, setCol1Mode] = React.useState<Col1Mode>('list')
-    const [col2Mode, setCol2Mode] = React.useState<Col2Mode>(() => id ? 'segmentList' : 'hidden')
-    const [col3Mode, setCol3Mode] = React.useState<Col3Mode>('blocks')
+    const [col1Mode, setCol1Mode] = React.useState<Col1Mode>('listSyllabi')
+    const [col2Mode, setCol2Mode] = React.useState<Col2Mode>(() => id ? 'listSegments' : 'hidden')
+    const [col3Mode, setCol3Mode] = React.useState<Col3Mode>('listBlocks')
 
     // ── Selection state ───────────────────────────────────────────────────────
     const [editingSegmentId, setEditingSegmentId] = React.useState<string | null>(null)
     const [selectedSegmentId, setSelectedSegmentId] = React.useState<string | null>(null)
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null)
-    const [newBlockType, setNewBlockType] = React.useState<BlockType | null>(null)
+    const [newBlockType, setNewBlockType] = React.useState<BlockType>('content_block')
     const [editingSyllabusId, setEditingSyllabusId] = React.useState<string | null>(null)
 
     // Track id changes (no remount when navigating between syllabi)
@@ -44,19 +44,19 @@ export default function EditorPage() {
     React.useEffect(() => {
         if (prevIdRef.current === id) return
         prevIdRef.current = id
-        setCol1Mode('list')
+        setCol1Mode('listSyllabi')
         setEditingSyllabusId(null)
         // Close col2 only if we navigated away from all syllabi; otherwise reset
         // to the list view (keeps col2 open if user was browsing segments)
         setCol2Mode(prev => {
             if (!id) return 'hidden'
-            return prev === 'hidden' ? 'hidden' : 'segmentList'
+            return prev === 'hidden' ? 'hidden' : 'listSegments'
         })
         setEditingSegmentId(null)
         setSelectedSegmentId(null)
         setSelectedBlockId(null)
-        setCol3Mode('blocks')
-        setNewBlockType(null)
+        setCol3Mode('listBlocks')
+        setNewBlockType('content_block')
     }, [id])
 
     // ── Queries ───────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export default function EditorPage() {
             void qc.invalidateQueries({ queryKey: ['syllabi'] })
             toast.success('Syllabus created')
             navigate(`/editor/${res.data.id}`)
-            setCol2Mode('segmentList')
+            setCol2Mode('listSegments')
         },
         onError: () => toast.error('Failed to create syllabus'),
     })
@@ -120,7 +120,7 @@ export default function EditorPage() {
             void qc.invalidateQueries({ queryKey: ['syllabi'] })
             toast.success('Syllabus saved')
             setEditingSyllabusId(null)
-            setCol1Mode('list')
+            setCol1Mode('listSyllabi')
         },
         onError: () => toast.error('Failed to save syllabus'),
     })
@@ -154,7 +154,7 @@ export default function EditorPage() {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['grading-scales'] })
             toast.success('Grading scale created')
-            setCol1Mode('list')
+            setCol1Mode('listSyllabi')
         },
         onError: () => toast.error('Failed to create grading scale'),
     })
@@ -165,7 +165,7 @@ export default function EditorPage() {
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['grading-scales'] })
             toast.success('Grading scale saved')
-            setCol1Mode('list')
+            setCol1Mode('listSyllabi')
         },
         onError: () => toast.error('Failed to save grading scale'),
     })
@@ -187,9 +187,9 @@ export default function EditorPage() {
         onSuccess: res => {
             invalidate()
             toast.success('Segment added')
-            setCol2Mode('segmentList')
+            setCol2Mode('listSegments')
             setSelectedSegmentId(res.data.id)
-            setCol3Mode('blocks')
+            setCol3Mode('listBlocks')
         },
         onError: () => toast.error('Failed to add segment'),
     })
@@ -197,7 +197,7 @@ export default function EditorPage() {
     const updateSegmentMutation = useMutation({
         mutationFn: ({ segId, body }: { segId: string; body: Record<string, unknown> }) =>
             apiFetch(`/editor/syllabi/${id}/segments/${segId}`, { method: 'PUT', body: JSON.stringify(body) }),
-        onSuccess: () => { invalidate(); toast.success('Segment saved'); setCol2Mode('segmentList') },
+        onSuccess: () => { invalidate(); toast.success('Segment saved'); setCol2Mode('listSegments') },
         onError: () => toast.error('Failed to save segment'),
     })
 
@@ -206,11 +206,11 @@ export default function EditorPage() {
         onSuccess: (_, segId) => {
             invalidate()
             toast.success('Segment deleted')
-            setCol2Mode('segmentList')
+            setCol2Mode('listSegments')
             setEditingSegmentId(null)
             if (selectedSegmentId === segId) {
                 setSelectedSegmentId(null)
-                setCol3Mode('blocks')
+                setCol3Mode('listBlocks')
             }
         },
         onError: () => toast.error('Failed to delete segment'),
@@ -249,7 +249,7 @@ export default function EditorPage() {
             void qc.invalidateQueries({ queryKey: ['syllabi'] })
             toast.success('Segment copied')
             setSelectedSegmentId(res.data.id)
-            setCol3Mode('blocks')
+            setCol3Mode('listBlocks')
         },
         onError: () => toast.error('Failed to copy segment'),
     })
@@ -263,8 +263,7 @@ export default function EditorPage() {
             invalidate()
             toast.success('Block added')
             setSelectedBlockId(res.data.id)
-            setNewBlockType(null)
-            setCol3Mode('blocks')
+            setCol3Mode('listBlocks')
         },
         onError: () => toast.error('Failed to add block'),
     })
@@ -272,7 +271,7 @@ export default function EditorPage() {
     const updateBlockMutation = useMutation({
         mutationFn: ({ segId, blockId, body }: { segId: string; blockId: string; body: Record<string, unknown> }) =>
             apiFetch(`/editor/syllabi/${id}/segments/${segId}/blocks/${blockId}`, { method: 'PUT', body: JSON.stringify(body) }),
-        onSuccess: () => { invalidate(); toast.success('Block saved'); setCol3Mode('blocks') },
+        onSuccess: () => { invalidate(); toast.success('Block saved'); setCol3Mode('listBlocks') },
         onError: () => toast.error('Failed to save block'),
     })
 
@@ -283,7 +282,7 @@ export default function EditorPage() {
             invalidate()
             toast.success('Block deleted')
             setSelectedBlockId(null)
-            setCol3Mode('blocks')
+            setCol3Mode('listBlocks')
         },
         onError: () => toast.error('Failed to delete block'),
     })
@@ -337,25 +336,25 @@ export default function EditorPage() {
         if (newId === id) {
             if (isMobile) {
                 // On mobile, clicking same syllabus always shows segments
-                setCol2Mode('segmentList')
+                setCol2Mode('listSegments')
                 setSelectedSegmentId(null)
                 setSelectedBlockId(null)
-                setCol3Mode('blocks')
+                setCol3Mode('listBlocks')
             } else if (col2Mode !== 'hidden') {
                 // Desktop: deselect entirely — navigate clears URL, useEffect resets state
                 navigate('/editor')
             } else {
-                setCol2Mode('segmentList')
+                setCol2Mode('listSegments')
             }
         } else {
-            setCol2Mode('segmentList')
+            setCol2Mode('listSegments')
             navigate(`/editor/${newId}`)
         }
     }
 
     function handleEditSyllabus(syllabusId: string) {
         setEditingSyllabusId(syllabusId)
-        setCol1Mode('edit')
+        setCol1Mode('editSyllabus')
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -372,7 +371,7 @@ export default function EditorPage() {
                 syllabiLoading={syllabiLoading}
                 selectedId={id}
                 col1Mode={col1Mode}
-                setCol1Mode={m => { if (m === 'list') setEditingSyllabusId(null); setCol1Mode(m) }}
+                setCol1Mode={m => { if (m === 'listSyllabi') setEditingSyllabusId(null); setCol1Mode(m) }}
                 terms={terms}
                 syllabus={editingSyllabus}
                 locked={editingLocked}
@@ -408,7 +407,7 @@ export default function EditorPage() {
                     setEditingSegmentId={setEditingSegmentId}
                     selectedSegmentId={selectedSegmentId}
                     onSelectSegment={segId => {
-                        if (segId === selectedSegmentId && !isMobile && col3Mode === 'blocks') {
+                        if (segId === selectedSegmentId && !isMobile && col3Mode === 'listBlocks') {
                             // Toggle: deselect only when blocks column is already showing
                             setSelectedSegmentId(null)
                             setSelectedBlockId(null)
@@ -416,14 +415,14 @@ export default function EditorPage() {
                             // Any other mode (studentProgress, editBlock, etc.): always open blocks
                             setSelectedSegmentId(segId)
                             setSelectedBlockId(null)
-                            setCol3Mode('blocks')
+                            setCol3Mode('listBlocks')
                         }
                     }}
                     onAddSegment={body => addSegmentMutation.mutate(body)}
                     onUpdateSegment={(segId, body) => updateSegmentMutation.mutate({ segId, body })}
                     onDeleteSegment={segId => deleteSegmentMutation.mutate(segId)}
                     onReorderSegments={orderedIds => reorderSegmentsMutation.mutate(orderedIds)}
-                    onEditSettings={() => { setEditingSyllabusId(id ?? null); setCol1Mode('edit') }}
+                    onEditSettings={() => { setEditingSyllabusId(id ?? null); setCol1Mode('editSyllabus') }}
                     isAdding={addSegmentMutation.isPending}
                     isUpdating={updateSegmentMutation.isPending}
                     syllabi={syllabi}
@@ -442,7 +441,7 @@ export default function EditorPage() {
                         setCol2Mode('hidden')
                         setSelectedSegmentId(null)
                         setSelectedBlockId(null)
-                        setCol3Mode('blocks')
+                        setCol3Mode('listBlocks')
                     } : undefined}
                 />
             )}
@@ -472,7 +471,7 @@ export default function EditorPage() {
                     mobileBack={isMobile ? () => {
                         setSelectedSegmentId(null)
                         setSelectedBlockId(null)
-                        setCol3Mode('blocks')
+                        setCol3Mode('listBlocks')
                     } : undefined}
                 />
             )}

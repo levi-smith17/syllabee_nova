@@ -4,14 +4,14 @@ import {
     Type, AlignLeft, Video, List, Table2, ChartCandlestick,
     Paperclip, MessageSquare, Calendar,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import type { BlockType } from '@syllabee/types'
 
 // ── Column mode types ─────────────────────────────────────────────────────────
 
-export type Col1Mode = 'list' | 'add' | 'edit' | 'grading-scale-add' | 'grading-scale-edit'
-export type Col2Mode = 'hidden' | 'segmentList' | 'segmentAdd' | 'segmentEdit'
-export type Col3Mode = 'blocks' | 'picker' | 'addBlock' | 'editBlock' | 'studentProgress'
+export type Col1Mode = 'listSyllabi' | 'addSyllabus' | 'editSyllabus' | 'addGradingScale' | 'editGradingScale'
+export type Col2Mode = 'listSegments' | 'addSegment' | 'editSegment' | 'hidden'
+export type Col3Mode = 'listBlocks' | 'addBlockPicker' | 'addBlock' | 'editBlock' | 'studentProgress'
 
 // ── Block metadata ────────────────────────────────────────────────────────────
 
@@ -59,19 +59,19 @@ export function ColHeader({ title, subtitle, onBack, icon, children }: {
     children?: React.ReactNode
 }) {
     return (
-        <div className="shrink-0 flex items-center gap-2 px-3 h-14 border-b bg-primary text-black">
+        <div className="flex items-center gap-2 px-3 h-14 shrink-0 border-b bg-primary text-primary-foreground">
             {onBack && (
-                <button
-                    onClick={onBack}
-                    className="p-1 text-black bg-black/10 hover:bg-black/20 rounded-sm transition-colors shrink-0"
+                <Button
+                    type="button" variant="ghost" onClick={onBack}
+                    className="h-7 w-7 p-2 rounded-sm shrink-0 bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                 >
-                    <ChevronLeft className="h-4 w-4" />
-                </button>
+                    <ChevronLeft className="h-4 w-4 shrink-0" />
+                </Button>
             )}
             {icon && <span className="shrink-0">{icon}</span>}
             <span className="flex-1 flex flex-col">
                 <span className="text-sm font-semibold truncate">{title}</span>
-                <span className="text-xs text-black/60 truncate">{subtitle}</span>
+                <span className="text-xs text-primary-foreground/60 truncate">{subtitle}</span>
             </span>
             {children}
         </div>
@@ -80,29 +80,26 @@ export function ColHeader({ title, subtitle, onBack, icon, children }: {
 
 export function AddButton({ onClick, label }: { onClick: () => void; label?: string }) {
     return (
-        <button
+        <Button
+            type="button"
+            variant="ghost"
             onClick={onClick}
-            className={cn(
-                'flex items-center gap-1 px-2 h-7 text-xs font-medium',
-                'bg-black/10 hover:bg-black/20 rounded-sm transition-colors shrink-0',
-            )}
+            className="h-7 w-7 p-2 rounded-sm shrink-0 bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
         >
-            <Plus className="h-3.5 w-3.5" />{label}
-        </button>
+            <Plus className="h-4 w-4 shrink-0" />{label}
+        </Button>
     )
 }
 
 export function DeleteButton({ onClick }: { onClick: () => void }) {
     return (
-        <button
+        <Button
             type="button"
+            variant="ghost"
             onClick={onClick}
-            className={cn(
-                'flex items-center gap-1 px-2 h-7 text-xs font-medium',
-                'bg-destructive text-destructive-foreground hover:bg-destructive/70 rounded-sm transition-colors shrink-0',
-            )}
+            className="h-7 w-7 p-2 rounded-sm shrink-0 bg-destructive text-destructive-foreground hover:bg-destructive/70 transition-colors"
         >
-            <Trash2 className="h-3.5 w-3.5" />
-        </button>
+            <Trash2 className="h-4 w-4 shrink-0" />
+        </Button>
     )
 }

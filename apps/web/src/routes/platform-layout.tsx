@@ -1,6 +1,7 @@
 import { Outlet, Route, Routes, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api/client'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { Sidebar } from '@/components/nav/sidebar'
 import { SidebarProvider } from '@/components/nav/sidebar-context'
 import EditorPage from '@/routes/editor/index'
@@ -18,6 +19,7 @@ interface QuickLinksResponse {
 }
 
 export default function PlatformLayout() {
+  const { data: profile } = useCurrentUser()
   const { data: quickLinks } = useQuery({
     queryKey: ['quick-links'],
     queryFn: () => apiFetch<{ data: QuickLink[] }>('/admin/quick-links').then(r => {
@@ -45,7 +47,7 @@ export default function PlatformLayout() {
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden">
         <Sidebar
-          isAdmin
+          isAdmin={!!profile?.isAdmin}
           quickLinks={quickLinks?.public ?? []}
           restrictedQuickLinks={quickLinks?.restricted ?? []}
         />

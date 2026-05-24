@@ -130,8 +130,8 @@ export const handler = async (
             dynamo.send(new GetCommand({
                 TableName: TABLE_NAME,
                 Key: { pk: `COURSE#${courseId}`, sk: 'METADATA' },
-                ProjectionExpression: '#n',
-                ExpressionAttributeNames: { '#n': 'name' },
+                ProjectionExpression: 'title, #legacyName',
+                ExpressionAttributeNames: { '#legacyName': 'name' },
             })),
             dynamo.send(new QueryCommand({
                 TableName: TABLE_NAME,
@@ -213,7 +213,9 @@ export const handler = async (
                 courseCode,
                 termCode,
                 sectionCode,
-                courseName: (courseDetail.Item?.name as string) ?? '',
+                courseName: (courseDetail.Item?.title as string)
+                    ?? (courseDetail.Item?.name as string)
+                    ?? '',
                 termName: termName ?? '',
                 instructorId: sectionItem.instructorId as string,
             },

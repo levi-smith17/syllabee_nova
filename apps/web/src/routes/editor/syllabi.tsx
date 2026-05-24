@@ -6,10 +6,16 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { RichTextEditor } from '@/components/editor/rich-text-editor'
+import { TextEditor } from '../../components/editor/text-editor'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ColHeader, DeleteButton, Col1Mode } from './shared'
@@ -49,11 +55,11 @@ function GradingScaleCard({ scale, onEdit, onDelete }: {
 }) {
     const grades = [...(scale.grades ?? [])].sort((a, b) => b.maxPercent - a.maxPercent)
     const gradeList = grades.length > 0 ? (
-        <div className="flex flex-col gap-0.5 text-[11px] text-muted-foreground mt-0.5 leading-relaxed break-words">
+        <div className="columns-2 gap-x-4 gap-y-0.5 text-muted-foreground mt-0.5 leading-relaxed">
             {grades.map((g, idx) => (
-                <span key={idx} className="text-xs">
-                {g.letter}: {g.minPercent}–{g.maxPercent}%
-            </span>
+                <div key={idx} className="text-xs break-inside-avoid">
+                    {g.letter}: {g.minPercent}–{g.maxPercent}%
+                </div>
             ))}
         </div>
     ) : null;
@@ -61,13 +67,13 @@ function GradingScaleCard({ scale, onEdit, onDelete }: {
     return (
         <div className="flex items-stretch border border-sidebar-foreground">
             <div className="flex flex-col items-center bg-sidebar-foreground gap-1 py-2 px-1.5 shrink-0">
-                <BarChart3 className="h-4 w-4 text-sidebar my-1 shrink-0" />
+                <BarChart3 className="h-4 w-4 text-primary-foreground my-1 shrink-0" />
                 <DropdownMenu>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                                 <Button type="button" variant="ghost"
-                                        className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                        className="h-7 w-7 p-2 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -77,11 +83,12 @@ function GradingScaleCard({ scale, onEdit, onDelete }: {
                         </TooltipContent>
                     </Tooltip>
                     <DropdownMenuContent align="start" side="right" onCloseAutoFocus={(e) => e.preventDefault()}>
-                        <DropdownMenuItem onClick={onEdit}>
+                        <DropdownMenuItem onClick={onEdit} className="focus:bg-muted-hover">
                             <Pencil className="h-4 w-4 mr-2" />Edit
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-popover-border" />
                         <DropdownMenuItem
-                            className="text-destructive focus:text-destructive/75 focus:bg-destructive/10"
+                            className="bg-destructive text-destructive-foreground focus:bg-destructive/70 transition-colors"
                             onClick={onDelete}
                         >
                             <Trash2 className="h-4 w-4 mr-2" />Delete
@@ -145,8 +152,8 @@ function SyllabusList({
     return (
         <>
             {/* Search */}
-            <div className="shrink-0 px-3 py-2 border-b">
-                <div className="flex items-center h-7 border border-transparent bg-background/60 focus-within:border-primary transition-colors">
+            <div className="shrink-0 px-3 py-2 border-b focus-within:bg-input-focus">
+                <div className="flex items-center h-7 border border-transparent bg-transparent transition-colors">
                     <Search className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground pointer-events-none" />
                     <input
                         value={search}
@@ -156,7 +163,7 @@ function SyllabusList({
                     />
                     {search && (
                         <button onClick={() => { setSearch(''); setSylPage(1) }} className="mr-1 text-muted-foreground hover:text-foreground">
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4 shrink-0 hover:text-destructive" />
                         </button>
                     )}
                 </div>
@@ -168,8 +175,8 @@ function SyllabusList({
                 {(gradingScalesLoading || gradingScales.length > 0) && (
                     <>
                         {gradingScalesLoading ? (
-                            <div className="flex items-center gap-1.5 py-2 text-muted-foreground text-xs">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />Loading grading scales…
+                            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading grading scales…
                             </div>
                         ) : (
                             <>
@@ -200,11 +207,11 @@ function SyllabusList({
 
                 {/* Syllabi section */}
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading…
+                    <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading syllabi…
                     </div>
                 ) : filtered.length === 0 ? (
-                    <p className="text-xs text-muted-foreground px-4 py-6 text-center">
+                    <p className="flex items-center justify-center py-12 text-muted-foreground text-sm">
                         {syllabi.length === 0 ? 'No syllabi yet — add one.' : 'No results.'}
                     </p>
                 ) : (
@@ -222,16 +229,16 @@ function SyllabusList({
                                     key={s.id}
                                     className={cn(
                                         'flex items-stretch border transition-colors',
-                                        s.id === selectedId ? 'border-primary bg-muted' : 'border-border',
+                                        s.id === selectedId ? 'border-primary bg-muted-selected' : 'border-border',
                                     )}
                                 >
                                     <div className="flex flex-col items-center bg-primary gap-1 py-2 px-1.5 shrink-0">
-                                        <BookOpen className="h-4 w-4 text-black shrink-0 my-1.5" />
+                                        <BookOpen className="h-4 w-4 text-primary-foreground shrink-0 my-1.5" />
                                         <DropdownMenu>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button type="button" variant="ghost" className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors">
+                                                        <Button type="button" variant="ghost" className="h-7 w-7 p-2 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
@@ -241,11 +248,14 @@ function SyllabusList({
                                                 </TooltipContent>
                                             </Tooltip>
                                             <DropdownMenuContent align="start" side="right" onCloseAutoFocus={(e) => e.preventDefault()}>
-                                                <DropdownMenuItem onClick={() => onEdit(s.id)}>
+                                                <DropdownMenuItem
+                                                    className="focus:bg-muted-hover"
+                                                    onClick={() => onEdit(s.id)}>
                                                     <Pencil className="h-4 w-4 mr-2" />Edit
                                                 </DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-popover-border" />
                                                 <DropdownMenuItem
-                                                    className="text-destructive focus:text-destructive/75 focus:bg-destructive/10"
+                                                    className="bg-destructive text-destructive-foreground focus:bg-destructive/70 transition-colors"
                                                     onClick={() => setSylDeleteId(s.id)}
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />Delete
@@ -255,7 +265,7 @@ function SyllabusList({
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button type="button" variant="ghost"
-                                                    className="h-7 w-7 p-1.5 text-black bg-black/10 hover:bg-black/20 hover:text-black rounded-sm transition-colors"
+                                                    className="h-7 w-7 p-2 rounded-sm bg-overlay-subtle text-primary-foreground hover:bg-overlay-subtle-hover hover:text-primary-foreground transition-colors"
                                                     onClick={() => onLock(s.id)}
                                                 >
                                                     {s.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
@@ -268,7 +278,7 @@ function SyllabusList({
                                     </div>
 
                                     <div
-                                        className="flex items-start gap-1.5 flex-1 min-w-0 px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                                        className="flex items-start gap-1.5 flex-1 min-w-0 px-3 py-2.5 cursor-pointer hover:bg-muted-hover transition-colors"
                                         onClick={() => onSelect(s.id)}
                                     >
                                         <div className="flex-1 min-w-0">
@@ -339,149 +349,41 @@ function SyllabusList({
     )
 }
 
-// ── Syllabus add form ─────────────────────────────────────────────────────────
-
-function SyllabusAddForm({ terms, syllabi, onSave, isSaving }: {
-    terms: { id: string; name: string; code: string; isActive?: boolean }[]
-    syllabi: MasterSyllabus[]
-    onSave: (body: Record<string, unknown>) => void
-    isSaving: boolean
-}) {
-    const [termCode, setTermCode] = React.useState('')
-    const [termSearch, setTermSearch] = React.useState('')
-    const [termOpen, setTermOpen] = React.useState(false)
-    const [interactiveView, setInteractiveView] = React.useState<boolean>(true)
-    const [officeHours, setOfficeHours] = React.useState('')
-    const termInputRef = React.useRef<HTMLInputElement>(null)
-    const termMenuRef = React.useRef<HTMLDivElement>(null)
-
-    const usedTermCodes = React.useMemo(() => new Set(syllabi.map(s => s.termCode).filter(Boolean)), [syllabi])
-    const sortedTerms = React.useMemo(
-        () => [...terms].filter(t => t.isActive !== false && !usedTermCodes.has(t.code)).sort((a, b) => b.code.localeCompare(a.code)),
-        [terms, usedTermCodes],
-    )
-    const filteredTerms = React.useMemo(() => {
-        const q = termSearch.toLowerCase()
-        return q ? sortedTerms.filter(t => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)) : sortedTerms
-    }, [sortedTerms, termSearch])
-    const selectedTerm = sortedTerms.find(t => t.code === termCode) ?? null
-
-    React.useEffect(() => {
-        if (!termOpen) return
-        function handle(e: MouseEvent) {
-            if (
-                termInputRef.current && !termInputRef.current.contains(e.target as Node) &&
-                termMenuRef.current && !termMenuRef.current.contains(e.target as Node)
-            ) { setTermOpen(false); if (!termCode) setTermSearch('') }
-        }
-        document.addEventListener('mousedown', handle)
-        return () => document.removeEventListener('mousedown', handle)
-    }, [termOpen, termCode])
-
-    function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault()
-        if (!termCode || !selectedTerm) { toast.error('Term is required'); return }
-        onSave({ termCode, interactiveView, title: selectedTerm.name, officeHours: officeHours || undefined })
-    }
-
-    return (
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="space-y-1.5">
-                <Label className="text-xs">Term</Label>
-                <div className="relative">
-                    <div className="relative flex items-center border border-input bg-background focus-within:ring-1 focus-within:ring-ring">
-                        <input ref={termInputRef} value={termSearch} placeholder="Search terms…" autoComplete="off"
-                            className="flex-1 h-8 px-3 text-xs bg-transparent outline-none placeholder:text-muted-foreground"
-                            onChange={e => { setTermSearch(e.target.value); setTermCode(''); setTermOpen(true) }}
-                            onFocus={() => setTermOpen(true)} />
-                        {termSearch ? (
-                            <button type="button" className="px-2 text-muted-foreground hover:text-foreground"
-                                onClick={() => { setTermSearch(''); setTermCode(''); termInputRef.current?.focus() }}>
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        ) : (
-                            <button type="button" className="px-2 text-muted-foreground hover:text-foreground"
-                                onMouseDown={e => { e.preventDefault(); setTermOpen(o => !o); termInputRef.current?.focus() }}>
-                                <ChevronDown className="h-4 w-4" />
-                            </button>
-                        )}
-                    </div>
-                    {termOpen && (
-                        <div ref={termMenuRef} className="absolute z-50 top-full left-0 right-0 border border-input bg-popover shadow-md max-h-48 overflow-y-auto">
-                            {filteredTerms.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-muted-foreground">No terms found.</p>
-                            ) : filteredTerms.map(term => (
-                                <button key={term.id} type="button"
-                                    className={cn('w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors', termCode === term.code && 'bg-accent font-medium')}
-                                    onMouseDown={e => { e.preventDefault(); setTermCode(term.code); setTermSearch(term.name); setTermOpen(false) }}>
-                                    {term.name}<span className="ml-2 text-muted-foreground">{term.code}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="space-y-1.5">
-                <Label className="text-xs">Office Hours <span className="text-muted-foreground">(optional)</span></Label>
-                <RichTextEditor content={officeHours} onChange={setOfficeHours} className="rounded-none" />
-            </div>
-
-            <div className="space-y-1.5">
-                <Label className="text-xs">Student View</Label>
-                <div className="flex flex-col gap-2">
-                    {([
-                        { value: true,  label: 'Interactive Syllabus', desc: 'Students step through content sequentially with embedded quiz questions and grade passback.' },
-                        { value: false, label: 'Traditional Syllabus', desc: 'A static, navigable document students read at their own pace.' },
-                    ] as const).map(({ value, label, desc }) => {
-                        const checked = interactiveView === value
-                        return (
-                            <label key={String(value)} className={cn('flex items-start gap-2.5 border p-3 cursor-pointer transition-colors',
-                                checked ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40')}>
-                                <input type="radio" name="view" checked={checked} onChange={() => setInteractiveView(value)} className="sr-only" />
-                                <div className={cn('mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center',
-                                    checked ? 'border-primary' : 'border-muted-foreground/40')}>
-                                    {checked && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium mb-0.5">{label}</p>
-                                    <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
-                                </div>
-                            </label>
-                        )
-                    })}
-                </div>
-            </div>
-
-            <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
-                {isSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Creating…</> : 'Create Syllabus'}
-            </Button>
-        </form>
-    )
-}
-
-// ── Syllabus edit form ────────────────────────────────────────────────────────
-
-function SyllabusEditForm({ syllabus, locked, onSave, isSaving }: {
-    syllabus: MasterSyllabus
-    locked: boolean
+function SyllabusForm({
+    mode,
+    syllabus,
+    locked,
+    terms,
+    syllabi,
+    onSave,
+    isSaving,
+}: {
+    mode: 'add' | 'edit'
+    syllabus?: MasterSyllabus
+    locked?: boolean
+    terms?: { id: string; name: string; code: string; isActive?: boolean }[]
+    syllabi?: MasterSyllabus[]
     onSave: (body: Record<string, unknown>) => void
     isSaving: boolean
 }) {
     const [form, setForm] = React.useState({
-        officeHours: syllabus.officeHours ?? '',
-        interactiveView: syllabus.interactiveView,
-        timeout: syllabus.timeout,
-        prohibitBacktracking: syllabus.prohibitBacktracking,
-        maxAttempts: syllabus.maxAttempts ?? 3,
-        maxPoints: syllabus.maxPoints ?? 3,
-        randomizeResponses: syllabus.randomizeResponses,
-        pointsLadder: syllabus.pointsLadder,
-        pointsLadderDeduction: syllabus.pointsLadderDeduction ?? 1,
+        termCode: syllabus?.termCode ?? '',
+        officeHours: syllabus?.officeHours ?? '',
+        interactiveView: syllabus?.interactiveView ?? true,
+        timeout: syllabus?.timeout ?? 2000,
+        prohibitBacktracking: syllabus?.prohibitBacktracking ?? false,
+        maxAttempts: syllabus?.maxAttempts ?? 3,
+        maxPoints: syllabus?.maxPoints ?? 3,
+        randomizeResponses: syllabus?.randomizeResponses ?? false,
+        pointsLadder: syllabus?.pointsLadder ?? false,
+        pointsLadderDeduction: syllabus?.pointsLadderDeduction ?? 1,
     })
 
     React.useEffect(() => {
+        if (!syllabus) return
+
         setForm({
+            termCode: syllabus.termCode ?? '',
             officeHours: syllabus.officeHours ?? '',
             interactiveView: syllabus.interactiveView,
             timeout: syllabus.timeout,
@@ -492,123 +394,446 @@ function SyllabusEditForm({ syllabus, locked, onSave, isSaving }: {
             pointsLadder: syllabus.pointsLadder,
             pointsLadderDeduction: syllabus.pointsLadderDeduction ?? 1,
         })
-    }, [syllabus.id])
+    }, [syllabus?.id])
 
     function f<K extends keyof typeof form>(key: K) {
-        return (val: (typeof form)[K]) => setForm(prev => ({ ...prev, [key]: val }))
+        return (val: (typeof form)[K]) =>
+            setForm(prev => ({ ...prev, [key]: val }))
+    }
+
+    // ── Add mode term picker ──────────────────────────────────────────────
+
+    const [termSearch, setTermSearch] = React.useState('')
+    const [termOpen, setTermOpen] = React.useState(false)
+
+    const termInputRef = React.useRef<HTMLInputElement>(null)
+    const termMenuRef = React.useRef<HTMLDivElement>(null)
+
+    const usedTermCodes = React.useMemo(
+        () => new Set((syllabi ?? []).map(s => s.termCode).filter(Boolean)),
+        [syllabi],
+    )
+
+    const sortedTerms = React.useMemo(
+        () =>
+            [...(terms ?? [])]
+                .filter(t => t.isActive !== false && !usedTermCodes.has(t.code))
+                .sort((a, b) => b.code.localeCompare(a.code)),
+        [terms, usedTermCodes],
+    )
+
+    const filteredTerms = React.useMemo(() => {
+        const q = termSearch.toLowerCase()
+
+        return q
+            ? sortedTerms.filter(
+                t =>
+                    t.name.toLowerCase().includes(q) ||
+                    t.code.toLowerCase().includes(q),
+            )
+            : sortedTerms
+    }, [sortedTerms, termSearch])
+
+    const selectedTerm =
+        sortedTerms.find(t => t.code === form.termCode) ?? null
+
+    React.useEffect(() => {
+        if (!termOpen) return
+
+        function handle(e: MouseEvent) {
+            if (
+                termInputRef.current &&
+                !termInputRef.current.contains(e.target as Node) &&
+                termMenuRef.current &&
+                !termMenuRef.current.contains(e.target as Node)
+            ) {
+                setTermOpen(false)
+
+                if (!form.termCode) {
+                    setTermSearch('')
+                }
+            }
+        }
+
+        document.addEventListener('mousedown', handle)
+
+        return () => document.removeEventListener('mousedown', handle)
+    }, [termOpen, form.termCode])
+
+    // ── Submit ────────────────────────────────────────────────────────────
+
+    function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault()
+
+        if (mode === 'add') {
+            if (!form.termCode || !selectedTerm) {
+                toast.error('Term is required')
+                return
+            }
+        }
+
+        const payload: Record<string, unknown> = {
+            officeHours: form.officeHours || undefined,
+            interactiveView: form.interactiveView,
+            timeout: form.timeout,
+            prohibitBacktracking: form.prohibitBacktracking,
+            maxAttempts: form.maxAttempts,
+            maxPoints: form.maxPoints,
+            randomizeResponses: form.randomizeResponses,
+            pointsLadder: form.pointsLadder,
+            pointsLadderDeduction: form.pointsLadderDeduction,
+        }
+
+        // Add-only fields
+        if (mode === 'add') {
+            payload.title = selectedTerm?.name
+            payload.termCode = form.termCode
+        }
+
+        onSave(payload)
     }
 
     return (
-        <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="border border-border p-3 bg-muted/30 space-y-0.5">
-                <p className="text-xs font-semibold">{syllabus.title}</p>
-                <p className="text-[11px] text-muted-foreground">{syllabus.termCode ?? '—'}</p>
-            </div>
+        <form
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto p-4 space-y-2"
+        >
 
-            <div className="space-y-1.5">
-                <Label className="text-xs">Office Hours</Label>
-                <RichTextEditor content={form.officeHours} onChange={!locked ? f('officeHours') : () => {}} className="rounded-none" />
-            </div>
+            {/* Existing syllabus summary */}
+            {mode === 'edit' && syllabus && (
+                <div className="border border-border p-3 bg-muted space-y-0.5">
+                    <p className="text-xs font-semibold">{syllabus.title}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                        {syllabus.termCode ?? '—'}
+                    </p>
+                </div>
+            )}
 
-            <div className="flex items-center gap-3">
-                <Switch checked={form.interactiveView} disabled={locked} onCheckedChange={f('interactiveView')} />
-                <Label className="text-xs cursor-pointer">Interactive View</Label>
-            </div>
-
-            {form.interactiveView && (
-                <div className="space-y-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Interactive Settings</p>
-
-                    <div className="border border-border p-3 space-y-2">
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Timeout (ms)</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                The amount of time in milliseconds a student must wait before the Next button becomes active. Has no effect in traditional view.
-                            </p>
-                        </div>
-                        <Input type="number" min={0} value={form.timeout} disabled={locked}
-                            onChange={e => setForm(prev => ({ ...prev, timeout: Number(e.target.value) }))}
-                            className="h-8 text-xs rounded-none w-28" />
+            {/* Term picker (add only) */}
+            {mode === 'add' && (
+                <div className="space-y-2 p-3 border border-border focus-within:bg-input-focus focus-within:ring-1 focus-within:ring-ring">
+                    <div>
+                        <p className="text-xs font-medium mb-0.5">Term</p>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                            The term associated with this syllabus. Each
+                            syllabus can be associated with only one term.
+                        </p>
                     </div>
 
-                    <div className="border border-border p-3 space-y-2">
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Max Attempts</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                The maximum number of attempts allowed per response block. Set to 0 for unlimited.
-                            </p>
-                        </div>
-                        <Input type="number" min={0} value={form.maxAttempts} disabled={locked}
-                            onChange={e => setForm(prev => ({ ...prev, maxAttempts: Number(e.target.value) }))}
-                            className="h-8 text-xs rounded-none w-28" />
-                    </div>
+                    <div className="relative">
+                        <div className="relative flex items-center border border-input bg-input focus-within:ring-1 focus-within:ring-ring">
+                            <input
+                                ref={termInputRef}
+                                value={termSearch}
+                                placeholder="Search terms…"
+                                autoComplete="off"
+                                className="flex-1 h-8 px-3 text-xs bg-input outline-none placeholder:text-muted-foreground"
+                                onChange={e => {
+                                    setTermSearch(e.target.value)
+                                    setForm(f => ({
+                                        ...f,
+                                        termCode: '',
+                                    }))
+                                    setTermOpen(true)
+                                }}
+                                onFocus={() => setTermOpen(true)}
+                            />
 
-                    <div className="border border-border p-3 space-y-2">
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Max Points</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                The maximum number of points available per response block.
-                            </p>
+                            {termSearch ? (
+                                <button
+                                    type="button"
+                                    className="px-2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                        setTermSearch('')
+                                        setForm(f => ({
+                                            ...f,
+                                            termCode: '',
+                                        }))
+                                        termInputRef.current?.focus()
+                                    }}
+                                >
+                                    <X className="h-4 w-4 shrink-0 hover:text-destructive" />
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="px-2 text-muted-foreground hover:text-foreground"
+                                    onMouseDown={e => {
+                                        e.preventDefault()
+                                        setTermOpen(o => !o)
+                                        termInputRef.current?.focus()
+                                    }}
+                                >
+                                    <ChevronDown className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
-                        <Input type="number" min={0} value={form.maxPoints} disabled={locked}
-                            onChange={e => setForm(prev => ({ ...prev, maxPoints: Number(e.target.value) }))}
-                            className="h-8 text-xs rounded-none w-28" />
-                    </div>
 
-                    <div className={cn('flex items-start gap-3 border p-3 transition-colors',
-                        form.prohibitBacktracking ? 'border-primary bg-primary/5' : 'border-border')}>
-                        <Switch checked={form.prohibitBacktracking} disabled={locked}
-                            onCheckedChange={f('prohibitBacktracking')} className="mt-0.5 shrink-0" />
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Prohibit Backtracking</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                Prevents students from revisiting previously completed blocks while on a response block.
-                            </p>
-                        </div>
-                    </div>
+                        {termOpen && (
+                            <div
+                                ref={termMenuRef}
+                                className="absolute z-50 top-full left-0 right-0 border border-popover-border bg-popover text-popover-foreground shadow-popover-shadow max-h-48 overflow-y-auto"
+                            >
+                                {filteredTerms.length === 0 ? (
+                                    <p className="px-3 py-2 text-xs text-popover-foreground">
+                                        No terms found.
+                                    </p>
+                                ) : (
+                                    filteredTerms.map(term => (
+                                        <button
+                                            key={term.id}
+                                            type="button"
+                                            className={cn(
+                                                'w-full text-left px-3 py-2 text-xs hover:bg-muted-hover transition-colors',
+                                                form.termCode === term.code &&
+                                                'bg-popover font-medium',
+                                            )}
+                                            onMouseDown={e => {
+                                                e.preventDefault()
 
-                    <div className={cn('flex items-start gap-3 border p-3 transition-colors',
-                        form.randomizeResponses ? 'border-primary bg-primary/5' : 'border-border')}>
-                        <Switch checked={form.randomizeResponses} disabled={locked}
-                            onCheckedChange={f('randomizeResponses')} className="mt-0.5 shrink-0" />
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Randomize Responses</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                Shuffles the response choices within each response block on every attempt.
-                            </p>
-                        </div>
-                    </div>
+                                                setForm(f => ({
+                                                    ...f,
+                                                    termCode: term.code,
+                                                }))
 
-                    <div className={cn('flex items-start gap-3 border p-3 transition-colors',
-                        form.pointsLadder ? 'border-primary bg-primary/5' : 'border-border')}>
-                        <Switch checked={form.pointsLadder} disabled={locked}
-                            onCheckedChange={f('pointsLadder')} className="mt-0.5 shrink-0" />
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Points Ladder</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                Deducts a point for each incorrect response within a response block.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className={cn('border p-3 space-y-2 transition-opacity', !form.pointsLadder && 'opacity-50 pointer-events-none')}>
-                        <div>
-                            <p className="text-xs font-medium mb-0.5">Points Ladder Deduction</p>
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                The number of points deducted per incorrect response.
-                            </p>
-                        </div>
-                        <Input type="number" min={0} max={100} value={form.pointsLadderDeduction} disabled={locked}
-                            onChange={e => setForm(prev => ({ ...prev, pointsLadderDeduction: Number(e.target.value) }))}
-                            className="h-8 text-xs rounded-none w-28" />
+                                                setTermSearch(term.name)
+                                                setTermOpen(false)
+                                            }}
+                                        >
+                                            {term.name}
+                                            <span className="ml-2 text-sidebar-accent-foreground">
+                                                ({term.code})
+                                            </span>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
+            {/* Office hours */}
+            <div className="space-y-2 p-3 border border-border">
+                <div>
+                    <p className="text-xs font-medium mb-0.5">
+                        Office Hours{' '}
+                        <span className="text-muted-foreground">
+                            (optional)
+                        </span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                        The office hours associated with this term
+                        (visible to students).
+                    </p>
+                </div>
+                <TextEditor
+                    content={form.officeHours}
+                    onChange={!locked ? f('officeHours') : () => {}}
+                    className="rounded-none focus-within:bg-input-focus focus-within:ring-1 focus-within:ring-primary"
+                />
+            </div>
+
+            {/* Student view */}
+            <div className="space-y-2 p-3 border border-border">
+                <div>
+                    <p className="text-xs font-medium mb-0.5">
+                        Student View
+                    </p>
+
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                        The student view mode for this syllabus.
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    {([
+                        {
+                            value: true,
+                            label: 'Interactive Mode',
+                            desc:
+                                'Students step through blocked content sequentially with embedded quiz questions and grade passback.',
+                        },
+                        {
+                            value: false,
+                            label: 'Traditional Mode',
+                            desc:
+                                'A static, navigable document students read at their own pace.',
+                        },
+                    ] as const).map(({ value, label, desc }) => {
+                        const checked = form.interactiveView === value
+
+                        return (
+                            <label
+                                key={String(value)}
+                                className={cn(
+                                    'flex items-start gap-2.5 border p-3 cursor-pointer transition-colors',
+                                    checked
+                                        ? 'border-primary bg-muted-selected'
+                                        : 'border-border hover:bg-muted-hover',
+                                    locked &&
+                                    'pointer-events-none opacity-60',
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="view"
+                                    checked={checked}
+                                    onChange={() =>
+                                        setForm(f => ({
+                                            ...f,
+                                            interactiveView: value,
+                                        }))
+                                    }
+                                    className="sr-only"
+                                />
+
+                                <div
+                                    className={cn(
+                                        'mt-0.5 h-3.5 w-3.5 shrink-0 rounded-full border-2 flex items-center justify-center',
+                                        checked
+                                            ? 'border-primary'
+                                            : 'border-muted-foreground/40',
+                                    )}
+                                >
+                                    {checked && (
+                                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-medium mb-0.5">
+                                        {label}
+                                    </p>
+
+                                    <p className="text-[11px] text-muted-foreground leading-snug">
+                                        {desc}
+                                    </p>
+                                </div>
+                            </label>
+                        )
+                    })}
+                </div>
+            </div>
+
+            {/* Interactive settings */}
+            {form.interactiveView && (
+                <div className="space-y-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Interactive Settings
+                    </p>
+
+                    <Input
+                        label="Timeout (ms)"
+                        description="The amount of time in milliseconds a student must wait before the Next button becomes active."
+                        type="number"
+                        min={0}
+                        step={1000}
+                        value={form.timeout}
+                        disabled={locked}
+                        onChange={e =>
+                            setForm(prev => ({
+                                ...prev,
+                                timeout: Number(e.target.value),
+                            }))
+                        }
+                    />
+
+                    <Input
+                        label="Max Attempts"
+                        description="The maximum number of attempts allowed per response block. Set to 0 for unlimited."
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={form.maxAttempts}
+                        disabled={locked}
+                        onChange={e =>
+                            setForm(prev => ({
+                                ...prev,
+                                maxAttempts: Number(e.target.value),
+                            }))
+                        }
+                    />
+
+                    <Input
+                        label="Max Points"
+                        description="The maximum number of points available per response block."
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={form.maxPoints}
+                        disabled={locked}
+                        onChange={e =>
+                            setForm(prev => ({
+                                ...prev,
+                                maxPoints: Number(e.target.value),
+                            }))
+                        }
+                    />
+
+                    <Switch
+                        label="Prohibit Backtracking"
+                        description="Prevents students from revisiting previously completed blocks until they've reviewed the entire syllabus."
+                        checked={form.prohibitBacktracking}
+                        disabled={locked}
+                        onCheckedChange={f('prohibitBacktracking')}
+                    />
+
+                    <Switch
+                        label="Randomize Responses"
+                        description="Shuffles the response choices within each response block on every attempt."
+                        checked={form.randomizeResponses}
+                        disabled={locked}
+                        onCheckedChange={f('randomizeResponses')}
+                    />
+
+                    <Switch
+                        label="Points Ladder"
+                        description="Deducts a point for each incorrect response within a response block."
+                        checked={form.pointsLadder}
+                        disabled={locked}
+                        onCheckedChange={f('pointsLadder')}
+                    />
+
+                    <Input
+                        label="Points Ladder Deduction"
+                        description="The number of points deducted per incorrect response."
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={form.pointsLadderDeduction}
+                        disabled={locked || !form.pointsLadder}
+                        onChange={e =>
+                            setForm(prev => ({
+                                ...prev,
+                                pointsLadderDeduction: Number(e.target.value),
+                            }))
+                        }
+                    />
+                </div>
+            )}
+
             {!locked && (
-                <Button type="submit" disabled={isSaving} className="w-full rounded-none h-9 bg-primary text-black hover:bg-primary/80">
-                    {isSaving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Saving…</> : 'Save Syllabus'}
-                </Button>
+                <div className="pt-2">
+                    <Button
+                        type="submit"
+                        disabled={isSaving}
+                        className="w-full rounded-none h-9 bg-primary text-primary-foreground hover:bg-primary/80"
+                    >
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                {mode === 'add'
+                                    ? 'Creating…'
+                                    : 'Saving…'}
+                            </>
+                        ) : (
+                            mode === 'add'
+                                ? 'Create Syllabus'
+                                : 'Save Syllabus'
+                        )}
+                    </Button>
+                </div>
             )}
         </form>
     )
@@ -654,10 +879,10 @@ export function SyllabusColumn({
     const [editingScale, setEditingScale] = React.useState<GradingScale | null>(null)
     const [sylEditDeleteOpen, setSylEditDeleteOpen] = React.useState(false)
 
-    const isGradingScaleMode = col1Mode === 'grading-scale-add' || col1Mode === 'grading-scale-edit'
+    const isGradingScaleMode = col1Mode === 'addGradingScale' || col1Mode === 'editGradingScale'
 
     return (
-        <div className="w-full md:w-64 xl:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
+        <div className="column bg-column-left w-full md:w-64 xl:w-96 md:shrink-0 md:border-r flex flex-col overflow-hidden">
             {isGradingScaleMode && (
                 <GradingScaleColumn
                     col1Mode={col1Mode}
@@ -671,7 +896,7 @@ export function SyllabusColumn({
                 />
             )}
 
-            {col1Mode === 'list' && (
+            {col1Mode === 'listSyllabi' && (
                 <>
                     <ColHeader title="Syllabi" subtitle="" icon={<BookOpen className="h-5 w-5" />}>
                         <DropdownMenu>
@@ -681,11 +906,11 @@ export function SyllabusColumn({
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setCol1Mode('add')}>
-                                    <BookOpen className="h-4 w-4 mr-2" />Add Syllabus
+                                <DropdownMenuItem onClick={() => setCol1Mode('addSyllabus')} className="focus:bg-muted-hover">
+                                    <BookOpen className="h-4 w-4 mr-2" />Create Syllabus
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setCol1Mode('grading-scale-add')}>
-                                    <BarChart3 className="h-4 w-4 mr-2" />Add Grading Scale
+                                <DropdownMenuItem onClick={() => setCol1Mode('addGradingScale')} className="focus:bg-muted-hover">
+                                    <BarChart3 className="h-4 w-4 mr-2" />Create Grading Scale
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -700,28 +925,29 @@ export function SyllabusColumn({
                         onDelete={onDeleteSyllabus}
                         gradingScales={gradingScales}
                         gradingScalesLoading={gradingScalesLoading}
-                        onEditGradingScale={scale => { setEditingScale(scale); setCol1Mode('grading-scale-edit') }}
+                        onEditGradingScale={scale => { setEditingScale(scale); setCol1Mode('editGradingScale') }}
                         onDeleteGradingScale={onDeleteGradingScale}
                     />
                 </>
             )}
 
-            {col1Mode === 'add' && (
+            {col1Mode === 'addSyllabus' && (
                 <>
-                    <ColHeader title="New Syllabus" subtitle="" icon={<BookOpen className="h-5 w-5" />} onBack={() => setCol1Mode('list')} />
-                    <SyllabusAddForm terms={terms} syllabi={syllabi} onSave={onCreateSyllabus} isSaving={isCreating} />
+                    <ColHeader title="Create Syllabus" subtitle="" icon={<BookOpen className="h-5 w-5" />} onBack={() => setCol1Mode('listSyllabi')} />
+                    <SyllabusForm mode="add" terms={terms} syllabi={syllabi} onSave={onCreateSyllabus} isSaving={isCreating} />
                 </>
             )}
 
-            {col1Mode === 'edit' && (
+            {col1Mode === 'editSyllabus' && (
                 <>
-                    <ColHeader title="Edit Syllabus" subtitle="" icon={<BookOpen className="h-5 w-5" />} onBack={() => setCol1Mode('list')}>
+                    <ColHeader title="Edit Syllabus" subtitle="" icon={<BookOpen className="h-5 w-5" />} onBack={() => setCol1Mode('listSyllabi')}>
                         {syllabus && !locked && (
                             <DeleteButton onClick={() => setSylEditDeleteOpen(true)} />
                         )}
                     </ColHeader>
                     {syllabus ? (
-                        <SyllabusEditForm
+                        <SyllabusForm
+                            mode="edit"
                             syllabus={syllabus}
                             locked={locked}
                             onSave={onUpdateSyllabus}
@@ -747,7 +973,7 @@ export function SyllabusColumn({
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSylEditDeleteOpen(false)}>Cancel</Button>
                         <Button variant="destructive" onClick={() => {
-                            if (syllabus) { onDeleteSyllabus(syllabus.id); setCol1Mode('list') }
+                            if (syllabus) { onDeleteSyllabus(syllabus.id); setCol1Mode('listSyllabi') }
                             setSylEditDeleteOpen(false)
                         }}>
                             Delete
